@@ -52,7 +52,7 @@ jobs:
         large-packages: true
         swap-storage: true
 
-     - name: Initialization environment
+    - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
