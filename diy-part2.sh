@@ -25,8 +25,8 @@
 #sed -i 's/KERNEL_TESTING_PATCHVER:=*.*/KERNEL_TESTING_PATCHVER:=6.1/g' target/linux/x86/Makefile
 
 # Modify golang
-#sed -i 's/GO_VERSION_MAJOR_MINOR:=.*/GO_VERSION_MAJOR_MINOR:=1.19/g' feeds/packages/lang/golang/golang/Makefile
+sed -i 's/GO_VERSION_MAJOR_MINOR:=.*/GO_VERSION_MAJOR_MINOR:=1.23/g' feeds/packages/lang/golang/golang/Makefile
 #sed -i 's/GO_VERSION_PATCH:=.*/GO_VERSION_PATCH:=7/g' feeds/packages/lang/golang/golang/Makefile
 #sed -i 's/PKG_HASH:=.*/PKG_HASH:=775bdf285ceaba940da8a2fe20122500efd7a0b65dbcee85247854a8d7402633/g' feeds/packages/lang/golang/golang/Makefile
-rm -rf feeds/packages/lang/golang
-cp -rf $GITHUB_WORKSPACE/general/golang feeds/packages/lang/golang
+#rm -rf feeds/packages/lang/golang
+#cp -rf $GITHUB_WORKSPACE/general/golang feeds/packages/lang/golang
