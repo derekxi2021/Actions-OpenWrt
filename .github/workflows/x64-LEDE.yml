@@ -24,7 +24,8 @@ on:
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
-  REPO_COMMIT: 75c1433842b25470d112afd0b3555e6999e2e096
+  #REPO_COMMIT: 75c1433842b25470d112afd0b3555e6999e2e096
+  REPO_COMMIT: 576235b0f11f37e4a93e6272cef4fdb572685660
   # REPO_URL: https://github.com/openwrt/openwrt
   # REPO_BRANCH: openwrt-24.10
   #FEEDS_CONF: feeds.conf.default
