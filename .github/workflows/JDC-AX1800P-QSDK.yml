@@ -199,7 +199,7 @@ jobs:
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build TR3000 LEDE
+name: Build JDC-AX1800P QSDK
 
 on:
   repository_dispatch:
