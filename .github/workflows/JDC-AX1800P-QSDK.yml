@@ -114,7 +114,7 @@ jobs:
     - name: 显示CPU状态和无线温度
       if: github.event.inputs.TEMP == 'true'
       run: |
-        cp JDCloud-AX1800-Pro/show-soc-status-on-luci.patch openwrt/feeds/luci/show-soc-status-on-luci.patch
+        cp config/show-soc-status-on-luci.patch openwrt/feeds/luci/show-soc-status-on-luci.patch
         cd openwrt/feeds/luci
         git apply show-soc-status-on-luci.patch
         
