@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 ###############手动修改##############
-name: JDCloud-AX1800-Pro-JiaY-shi
+name: JDC-AX1800P-QSDK
 
 on:
   repository_dispatch:
@@ -33,13 +33,13 @@ on:
 
 env:
   ###############手动修改##############
-  OPENWRT_NAME: JiaY-shi
+  OPENWRT_NAME: JiaY-shi-QSDK
   REPO_URL: https://github.com/JiaY-shi/openwrt
-  REPO_BRANCH: ipq60xx-devel_nss
+  REPO_BRANCH: ipq-devel_nss
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: JDCloud-AX1800-Pro/.config
-  DIY_P1_SH: JDCloud-AX1800-Pro/diy-part1.sh
-  DIY_P2_SH: JDCloud-AX1800-Pro/diy-part2.sh
+  CONFIG_FILE: config/JDC-AX1800P-QSDK.config
+  DIY_P1_SH: diy-part1.sh
+  DIY_P2_SH: diy-part2.sh
   SSH_ACTIONS: false
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
