@@ -100,7 +100,9 @@ jobs:
         
     - name: 应用patch & 更新安装 feeds
       run: |
+        cp config/jdc_ax1800-pro.patch openwrt/jdc_ax1800-pro.patch
         cd openwrt
+        git apply jdc_ax1800-pro.patch
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         
