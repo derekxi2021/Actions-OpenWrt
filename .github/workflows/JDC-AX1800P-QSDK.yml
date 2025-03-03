@@ -92,7 +92,15 @@ jobs:
         cd openwrt
         #git reset --hard $REPO_COMMIT
         $GITHUB_WORKSPACE/$DIY_P1_SH
-
+    
+    - name: Apply patch
+      run: |
+        cp config/jdc_ax1800-pro.patch openwrt/jdc_ax1800-pro.patch
+        cd openwrt
+        git apply jdc_ax1800-pro.patch
+        #./scripts/feeds update -a
+        #./scripts/feeds install -a
+    
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
 
