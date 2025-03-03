@@ -1,7 +1,7 @@
 diff --git a/package/network/config/wifi-scripts/files/lib/wifi/mac80211.sh b/package/network/config/wifi-scripts/files/lib/wifi/mac80211.sh
 index e24a2a634e..4a3d6455b5 100644
---- a/package/network/config/wifi-scripts/files/lib/wifi/mac80211.sh
-+++ b/package/network/config/wifi-scripts/files/lib/wifi/mac80211.sh
+--- a/package/network/config/wifi-scripts/files/lib/wifi/mac80211.uc
++++ b/package/network/config/wifi-scripts/files/lib/wifi/mac80211.uc
 @@ -203,7 +203,7 @@ detect_mac80211() {
  			set wireless.${name}.channel=${channel}
  			set wireless.${name}.band=${mode_band}
@@ -11,10 +11,10 @@ index e24a2a634e..4a3d6455b5 100644
  
  			set wireless.default_${name}=wifi-iface
  			set wireless.default_${name}.device=${name}
-diff --git a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-jdc-ax1800-pro.dts b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-jdc-ax1800-pro.dts
+diff --git a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6000-jdc-ax1800-pro.dts b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6000-jdc-ax1800-pro.dts
 index fac57d9da4..1563b46d45 100644
---- a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-jdc-ax1800-pro.dts
-+++ b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-jdc-ax1800-pro.dts
+--- a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6000-jdc-ax1800-pro.dts
++++ b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6000-jdc-ax1800-pro.dts
 @@ -20,7 +20,6 @@
  #include "ipq6018-ess.dtsi"
  #include "ipq6018-nss.dtsi"
