@@ -9,7 +9,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build TR3000 LEDE
+name: Build MT798x LEDE
 
 on:
   repository_dispatch:
