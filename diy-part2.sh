@@ -32,3 +32,7 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 # set golang 1.23.x
 #git clone -b 23.x --single-branch https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
+
+# msd_lite
+git_clone https://github.com/ximiTech/luci-app-msd_lite
+git_clone https://github.com/ximiTech/msd_lite
