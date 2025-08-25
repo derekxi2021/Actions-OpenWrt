@@ -35,7 +35,7 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 
 # Remove dns2socks-rust & v2raya
 #rm -rfv feeds/helloworld/dns2socks-rust
-rm -rfv feeds/helloworld/v2raya
+#rm -rfv feeds/helloworld/v2raya
 
 # msd_lite
 #git clone --depth=1 https://github.com/ximiTech/luci-app-msd_lite package/luci-app-msd_lite
