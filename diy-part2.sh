@@ -34,7 +34,7 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #git clone -b 23.x --single-branch https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
 
 # Remove dns2socks-rust & v2raya
-rm -rfv feeds/helloworld/dns2socks-rust
+#rm -rfv feeds/helloworld/dns2socks-rust
 rm -rfv feeds/helloworld/v2raya
 
 # msd_lite
