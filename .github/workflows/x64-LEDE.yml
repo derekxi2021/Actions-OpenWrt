@@ -93,6 +93,13 @@ jobs:
         git reset --hard $REPO_COMMIT
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
+    - name: Set up swap
+      run: |
+        sudo fallocate -l 4G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
 
