@@ -113,13 +113,13 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
- 
-   - name: Set Custom Rust Version
+
+    - name: Set Custom Rust Version
       run: |
         sed -i 's/PKG_VERSION:=1.80.1/PKG_VERSION:=1.81.0/g' feeds/packages/lang/rust/Makefile
         sed -i 's/PKG_HASH:=old_sha256_hash/PKG_HASH:=new_sha256_hash/g' feeds/packages/lang/rust/Makefile
-    # 可选：如果PKG_SOURCE或PKG_SOURCE_URL需调整，也用sed替换
-    # 示例：sed -i 's/rust-$(PKG_VERSION).tar.gz/rust-1.81.0.tar.gz/g' feeds/packages/lang/rust/Makefile
+# 可选：如果PKG_SOURCE或PKG_SOURCE_URL需调整，也用sed替换
+# 示例：sed -i 's/rust-$(PKG_VERSION).tar.gz/rust-1.81.0.tar.gz/g' feeds/packages/lang/rust/Makefile
     
     - name: Download package
       id: package
