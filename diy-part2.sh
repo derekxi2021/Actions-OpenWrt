@@ -38,8 +38,8 @@ git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 #git clone https://github.com/kenzok8/golang -b 1.23 feeds/packages/lang/golang
 
 # fixed rust host build download llvm in ci error
-sed -i 's/--set=llvm\.download-ci-llvm=false/--set=llvm.download-ci-llvm=true/' feeds/packages/lang/rust/Makefile
-grep -q -- '--ci false \\' feeds/packages/lang/rust/Makefile || sed -i '/x\.py \\/a \        --ci false \\' feeds/packages/lang/rust/Makefile
+#sed -i 's/--set=llvm\.download-ci-llvm=false/--set=llvm.download-ci-llvm=true/' feeds/packages/lang/rust/Makefile
+#grep -q -- '--ci false \\' feeds/packages/lang/rust/Makefile || sed -i '/x\.py \\/a \        --ci false \\' feeds/packages/lang/rust/Makefile
 
 # Remove dns2socks-rust & v2raya
 #rm -rfv feeds/helloworld/dns2socks-rust
