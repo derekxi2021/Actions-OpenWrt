@@ -22,7 +22,7 @@ on:
         default: 'false'
 
 env:
-  REPO_URL:  https://github.com/immortalwrt
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
   #REPO_COMMIT: 1faba8061d5131306b01fdf27ab7332619926455
   #REPO_COMMIT: 75c1433842b25470d112afd0b3555e6999e2e096
@@ -30,7 +30,7 @@ env:
   # REPO_URL: https://github.com/openwrt/openwrt
   # REPO_BRANCH: openwrt-24.10
   #FEEDS_CONF: feeds.conf.default
-  FEEDS_CONF: config/feeds.conf.LEDE
+  FEEDS_CONF: config/feeds.conf.immortalwrt
   CONFIG_FILE: config/x64-immortalwrt.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
