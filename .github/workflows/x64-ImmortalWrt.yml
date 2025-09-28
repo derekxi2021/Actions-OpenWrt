@@ -8,12 +8,12 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build x86-64 OpenWrt
+name: Build x86-64 ImmortalWrt
 
 on:
   repository_dispatch:
-  #schedule:
-  #- cron: 0 1 1 * *
+  schedule:
+  - cron: 0 1 1 * *
   workflow_dispatch:
     inputs:
       ssh:
@@ -22,12 +22,16 @@ on:
         default: 'false'
 
 env:
-  # REPO_URL: https://github.com/coolsnowwolf/lede
-  # REPO_BRANCH: master
-  REPO_URL: https://github.com/openwrt/openwrt
-  REPO_BRANCH: openwrt-24.10
-  FEEDS_CONF: config/feeds.conf.openwrt
-  CONFIG_FILE: config/x64-OpenWrt.config
+  REPO_URL:  https://github.com/immortalwrt
+  REPO_BRANCH: master
+  #REPO_COMMIT: 1faba8061d5131306b01fdf27ab7332619926455
+  #REPO_COMMIT: 75c1433842b25470d112afd0b3555e6999e2e096
+  #REPO_COMMIT: 410fe9f49b36a73b116be8e579fca83ec7b7364e
+  # REPO_URL: https://github.com/openwrt/openwrt
+  # REPO_BRANCH: openwrt-24.10
+  #FEEDS_CONF: feeds.conf.default
+  FEEDS_CONF: config/feeds.conf.LEDE
+  CONFIG_FILE: config/x64-immortalwrt.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
@@ -40,6 +44,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    #runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
@@ -85,6 +90,7 @@ jobs:
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
+        git reset --hard $REPO_COMMIT
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
@@ -177,7 +183,7 @@ jobs:
       uses: dev-drprasad/delete-older-releases@master
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        keep_latest: 3
+        keep_latest: 6
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
