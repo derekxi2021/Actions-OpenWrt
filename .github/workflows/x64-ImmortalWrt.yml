@@ -31,7 +31,7 @@ env:
   # REPO_BRANCH: openwrt-24.10
   #FEEDS_CONF: feeds.conf.default
   FEEDS_CONF: config/feeds.conf.immortalwrt
-  CONFIG_FILE: config/x64-immortalwrt.config
+  CONFIG_FILE: config/x64-ImmortalWrt.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
