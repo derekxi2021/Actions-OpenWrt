@@ -29,8 +29,8 @@ env:
   #REPO_COMMIT: 410fe9f49b36a73b116be8e579fca83ec7b7364e
   # REPO_URL: https://github.com/openwrt/openwrt
   # REPO_BRANCH: openwrt-24.10
-  FEEDS_CONF: feeds.conf.default
-  #FEEDS_CONF: config/feeds.conf.immortalwrt
+  #FEEDS_CONF: feeds.conf.default
+  FEEDS_CONF: config/feeds.conf.immortalwrt
   CONFIG_FILE: config/x64-immortalwrt.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
