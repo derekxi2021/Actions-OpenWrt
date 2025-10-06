@@ -26,7 +26,7 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 
 # set golang 1.25.x
 rm -rf feeds/packages/lang/golang
-git clone https://github.com/kenzok8/golang -b 1.25 feeds/packages/lang/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
 
 # set golang 1.24.x
 #rm -rf feeds/packages/lang/golang
