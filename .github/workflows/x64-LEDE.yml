@@ -58,7 +58,7 @@ jobs:
         remove-haskell: true
         remove-codeql: true
         remove-docker-images: true
-        uild-mount-path: '/workdir'
+        build-mount-path: '/workdir'
 
     - name: Checkout
       uses: actions/checkout@main
