@@ -91,7 +91,7 @@ jobs:
     - name: Cache
       uses: HiGarfield/cachewrtbuild@main
       with:
-        ccache: 'true'
+        ccache: true
         #prefix: ${{ github.workspace }}/openwrt
     
     - name: Load custom feeds
