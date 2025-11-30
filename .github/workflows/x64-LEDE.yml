@@ -33,39 +33,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Maximize build space
-      uses: easimon/maximize-build-space@master
-      with:
-        root-reserve-mb: 512
-        swap-size-mb: 1024
-        temp-reserve-mb: 100
-        remove-dotnet: true
-        remove-android: true
-        remove-haskell: true
-        remove-codeql: true
-        remove-docker-images: true
-
-    - name: Checkout
-      uses: actions/checkout@main
-      with:
-        fetch-depth: 0
-        
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
-        
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
-        
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -79,14 +46,41 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-  
-#    - name: Combine Disks
-#      uses: easimon/maximize-build-space@master
+
+    - name: Maximize build space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 512
+        swap-size-mb: 1024
+        temp-reserve-mb: 100
+        remove-dotnet: true
+        remove-android: true
+        remove-haskell: true
+        remove-codeql: true
+        remove-docker-images: true
+        uild-mount-path: '/workdir'
+
+    - name: Checkout
+      uses: actions/checkout@main
+      with:
+        fetch-depth: 0
+        
+#    - name: Free Disk Space (Ubuntu)
+#      uses: jlumbroso/free-disk-space@main
 #      with:
-#        swap-size-mb: 1024
-#        temp-reserve-mb: 100
-#        root-reserve-mb: 1024
- 
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+#        tool-cache: false
+        
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+#        android: true
+#        dotnet: true
+#        haskell: true
+#        large-packages: true
+#        docker-images: true
+#        swap-storage: true
+              
     - name: Clone source code
       working-directory: /workdir
       run: |
@@ -98,7 +92,7 @@ jobs:
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: 'true'
-        prefix: ${{ github.workspace }}/openwrt
+        #prefix: ${{ github.workspace }}/openwrt
     
     - name: Load custom feeds
       run: |
