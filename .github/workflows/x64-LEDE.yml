@@ -62,8 +62,8 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@main
-      with:
-        fetch-depth: 0
+#      with:
+#        fetch-depth: 0
         
 #    - name: Free Disk Space (Ubuntu)
 #      uses: jlumbroso/free-disk-space@main
@@ -88,11 +88,10 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
     
-    - name: Cache
-      uses: HiGarfield/cachewrtbuild@main
-      with:
-        ccache: true
-        #prefix: ${{ github.workspace }}/openwrt
+#    - name: Cache
+#      uses: HiGarfield/cachewrtbuild@main
+#      with:
+#        ccache: true
     
     - name: Load custom feeds
       run: |
