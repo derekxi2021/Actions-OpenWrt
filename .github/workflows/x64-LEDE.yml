@@ -40,12 +40,12 @@ jobs:
         swap-size-mb: 1024
         remove-dotnet: 'true'
 
-    
     - name: Checkout
       uses: actions/checkout@main
       with:
         fetch-depth: 0
         
+    - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
       with:
         # this might remove tools that are actually needed,
