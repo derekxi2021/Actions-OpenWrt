@@ -127,7 +127,6 @@ jobs:
  #       prefix: ${{ github.workspace }}/openwrt
 
      - name: Cache Toolchain
-      if: env.CACHE_TOOLCHAIN == 'true'
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: false
