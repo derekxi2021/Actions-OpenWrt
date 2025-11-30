@@ -81,8 +81,8 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@main
-      with:
-        fetch-depth: 0
+#      with:
+#        fetch-depth: 0
         
  #     uses: jlumbroso/free-disk-space@main
  #     with:
@@ -120,11 +120,19 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
     
-    - name: Cache
-      uses: klever1988/cachewrtbuild@main
+ #   - name: Cache
+ #     uses: klever1988/cachewrtbuild@main
+ #     with:
+ #       ccache: 'true'
+ #       prefix: ${{ github.workspace }}/openwrt
+
+     - name: Cache Toolchain
+      if: env.CACHE_TOOLCHAIN == 'true'
+      uses: HiGarfield/cachewrtbuild@main
       with:
-        ccache: 'true'
-        prefix: ${{ github.workspace }}/openwrt
+        ccache: false
+        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+        prefix: ${{ env.OPENWRT_PATH }}
     
     - name: Load custom feeds
       run: |
