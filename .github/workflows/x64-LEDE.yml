@@ -33,25 +33,33 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    - name: Maximize build space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 1024
+        swap-size-mb: 1024
+        remove-dotnet: 'true'
+
+    
     - name: Checkout
       uses: actions/checkout@main
       with:
         fetch-depth: 0
         
- #     uses: jlumbroso/free-disk-space@main
- #     with:
+      uses: jlumbroso/free-disk-space@main
+      with:
         # this might remove tools that are actually needed,
         # if set to "true" but frees about 6 GB
- #       tool-cache: false
+        tool-cache: false
         
         # all of these default to true, but feel free to set to
         # "false" if necessary for your workflow
- #       android: true
- #       dotnet: true
- #       haskell: true
- #       large-packages: true
- #       docker-images: true
- #       swap-storage: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
         
     - name: Initialization environment
       env:
@@ -67,12 +75,12 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
   
-    - name: Combine Disks
-      uses: easimon/maximize-build-space@master
-      with:
-        swap-size-mb: 1024
-        temp-reserve-mb: 100
-        root-reserve-mb: 1024
+#    - name: Combine Disks
+#      uses: easimon/maximize-build-space@master
+#      with:
+#        swap-size-mb: 1024
+#        temp-reserve-mb: 100
+#        root-reserve-mb: 1024
  
     - name: Clone source code
       working-directory: /workdir
