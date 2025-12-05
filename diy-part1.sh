@@ -26,3 +26,4 @@ echo 'src-git passwall2 https://github.com/xiaorouji/openwrt-passwall2' >>feeds.
 #echo 'src-git gecoosac https://github.com/lwb1978/openwrt-gecoosac' >>feeds.conf.default
 #echo 'src-git oaf https://github.com/destan19/OpenAppFilter' >>feeds.conf.default
 echo 'src-git lucky https://github.com/sirpdboy/luci-app-lucky' >>feeds.conf.default
+echo 'src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki' >>feeds.conf.default
