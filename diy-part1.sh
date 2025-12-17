@@ -27,6 +27,3 @@ echo 'src-git passwall2 https://github.com/xiaorouji/openwrt-passwall2' >>feeds.
 #echo 'src-git oaf https://github.com/destan19/OpenAppFilter' >>feeds.conf.default
 echo 'src-git lucky https://github.com/sirpdboy/luci-app-lucky' >>feeds.conf.default
 echo 'src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki' >>feeds.conf.default
-
-# Naiveproxy 缺少x86编译失败版本回退
-sed -i 's/140.0.7339.123-2/140.0.7339.123-1/g' feeds/small/naiveproxy/Makefile
