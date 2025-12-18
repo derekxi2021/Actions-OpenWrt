@@ -51,4 +51,4 @@ git clone https://github.com/kenzok8/golang -b 1.25 feeds/packages/lang/golang
 #git clone https://github.com/ximiTech/luci-app-msd_lite.git package/msd_lite/luci-app-msd_lite
 
 # Naiveproxy 缺少x86编译失败版本回退
-sed -i 's/143.0.7499.109-2/143.0.7499.109-1/g' package/feeds/helloworld/naiveproxy/Makefile
+sed -i 's/143.0.7499.109-2/140.0.7339.123-3/g' package/feeds/helloworld/naiveproxy/Makefile
