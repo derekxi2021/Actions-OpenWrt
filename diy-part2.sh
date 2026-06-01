@@ -24,13 +24,17 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #sed -i 's/KERNEL_PATCHVER:=*.*/KERNEL_PATCHVER:=6.1/g' target/linux/x86/Makefile
 #sed -i 's/KERNEL_TESTING_PATCHVER:=*.*/KERNEL_TESTING_PATCHVER:=6.1/g' target/linux/x86/Makefile
 
-# set golang 1.25.x
-rm -rf feeds/packages/lang/golang
-git clone https://github.com/kenzok8/golang -b 1.25 feeds/packages/lang/golang
-
-# set golang 1.24.x
+# set golang 1.26.x （rc/beta）
 #rm -rf feeds/packages/lang/golang
-#git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
+#git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
+
+# set golang 1.25.x
+#rm -rf feeds/packages/lang/golang
+#git clone https://github.com/kenzok8/golang -b 1.25 feeds/packages/lang/golang
+
+# set golang 1.24.x (main)
+rm -rf feeds/packages/lang/golang
+git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 
 # set golang 1.23.x
 #rm -rf feeds/packages/lang/golang
