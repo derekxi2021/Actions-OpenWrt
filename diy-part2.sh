@@ -57,6 +57,5 @@ git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 # Naiveproxy 缺少x86编译失败版本回退
 #sed -i 's/143.0.7499.109-2/140.0.7339.123-3/g' feeds/helloworld/naiveproxy/Makefile
 
-# 彻底移除各种 feed 仓库中的 v2ray-plugin 源码文件夹
-rm -rf feeds/helloworld/v2ray-plugin
-rm -rf feeds/small/v2ray-plugin
+# 进入 SSR+ 目录，强行删掉 Makefile 里的 v2ray-plugin 依赖声明
+sed -i 's/+v2ray-plugin//g' package/feeds/helloworld/luci-app-ssr-plus/Makefile
