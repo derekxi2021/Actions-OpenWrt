@@ -61,13 +61,17 @@ git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 # 彻底根除 v2ray-plugin 编译错误的组合拳（diy-part2 专用版）
 # =========================================================
 
-echo "开始强力清洗 v2ray-plugin 依赖..."
 
-# 1. 强行修改所有 feeds 和 package 目录下的 Makefile，解除强制依赖锁定
-find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/+v2ray-plugin//g' 2>/dev/null
+echo "开始精准清洗冲突依赖..."
+
+# 1. 【精准替换】只切断依赖 + 连坐，避免留下孤立的冒号导致语法错误
+find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+v2ray-plugin//g' 2>/dev/null
 find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/v2ray-plugin//g' 2>/dev/null
+# 修复刚才用力过猛留下的冒号尾巴
+find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/_v2ray-plugin//g' 2>/dev/null
+find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/_V2ray_Plugin://g' 2>/dev/null
 
-# 2. 物理抹除所有可能存在 v2ray-plugin 的源码文件夹
+# 2. 物理抹除 v2ray-plugin 源码
 rm -rf feeds/helloworld/v2ray-plugin/
 rm -rf feeds/small/v2ray-plugin/
 rm -rf feeds/kenzo/v2ray-plugin/
@@ -75,12 +79,21 @@ rm -rf package/feeds/helloworld/v2ray-plugin/
 rm -rf package/feeds/small/v2ray-plugin/
 rm -rf package/feeds/kenzo/v2ray-plugin/
 
-# 3. 强行清洗你的 .config 文件，把隐性勾选全部擦除并显式声明关闭
+# 3. 【新增】强行在编译前把导致循环依赖（Recursive）的乱炖插件干掉
+# 既然你用 PassWall2/SSR+，这些引战的新插件（fchomo/mihomo/nikki）直接声明不编译
 if [ -f .config ]; then
-    sed -i '/CONFIG_PACKAGE_v2ray-plugin/d' .config
-    sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d' .config
-    echo "CONFIG_PACKAGE_v2ray-plugin=n" >> .config
-    echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >> .config
+    # 强制关闭 fchomo
+    sed -i '/CONFIG_PACKAGE_luci-app-fchomo/d' .config
+    echo "CONFIG_PACKAGE_luci-app-fchomo=n" >> .config
+    
+    # 强制关闭 mihomo 冲突项
+    sed -i '/CONFIG_PACKAGE_mihomo/d' .config
+    echo "CONFIG_PACKAGE_mihomo-alpha=n" >> .config
+    echo "CONFIG_PACKAGE_mihomo-meta=n" >> .config
+    
+    # 强制关闭 nikki
+    sed -i '/CONFIG_PACKAGE_nikki/d' .config
+    echo "CONFIG_PACKAGE_nikki=n" >> .config
 fi
 
-echo "v2ray-plugin 依赖清洗完毕！"
+echo "冲突依赖清洗完毕！"
