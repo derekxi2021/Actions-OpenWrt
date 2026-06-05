@@ -57,5 +57,30 @@ git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 # Naiveproxy 缺少x86编译失败版本回退
 #sed -i 's/143.0.7499.109-2/140.0.7339.123-3/g' feeds/helloworld/naiveproxy/Makefile
 
-# 进入 SSR+ 目录，强行删掉 Makefile 里的 v2ray-plugin 依赖声明
-sed -i 's/+v2ray-plugin//g' package/feeds/helloworld/luci-app-ssr-plus/Makefile
+# =========================================================
+# 彻底根除 v2ray-plugin 编译错误的组合拳（diy-part2 专用版）
+# =========================================================
+
+echo "开始强力清洗 v2ray-plugin 依赖..."
+
+# 1. 强行修改所有 feeds 和 package 目录下的 Makefile，解除强制依赖锁定
+find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/+v2ray-plugin//g' 2>/dev/null
+find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/v2ray-plugin//g' 2>/dev/null
+
+# 2. 物理抹除所有可能存在 v2ray-plugin 的源码文件夹
+rm -rf feeds/helloworld/v2ray-plugin/
+rm -rf feeds/small/v2ray-plugin/
+rm -rf feeds/kenzo/v2ray-plugin/
+rm -rf package/feeds/helloworld/v2ray-plugin/
+rm -rf package/feeds/small/v2ray-plugin/
+rm -rf package/feeds/kenzo/v2ray-plugin/
+
+# 3. 强行清洗你的 .config 文件，把隐性勾选全部擦除并显式声明关闭
+if [ -f .config ]; then
+    sed -i '/CONFIG_PACKAGE_v2ray-plugin/d' .config
+    sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d' .config
+    echo "CONFIG_PACKAGE_v2ray-plugin=n" >> .config
+    echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >> .config
+fi
+
+echo "v2ray-plugin 依赖清洗完毕！"
