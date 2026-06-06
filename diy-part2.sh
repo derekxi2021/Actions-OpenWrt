@@ -29,12 +29,12 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 
 # set golang 1.25.x
-#rm -rf feeds/packages/lang/golang
-#git clone https://github.com/kenzok8/golang -b 1.25 feeds/packages/lang/golang
+rm -rf feeds/packages/lang/golang
+git clone https://github.com/kenzok8/golang -b 1.25 feeds/packages/lang/golang
 
 # set golang 1.24.x (main)
-rm -rf feeds/packages/lang/golang
-git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
+#rm -rf feeds/packages/lang/golang
+#git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 
 # set golang 1.23.x
 #rm -rf feeds/packages/lang/golang
