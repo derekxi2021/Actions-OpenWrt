@@ -58,42 +58,46 @@ git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
 #sed -i 's/143.0.7499.109-2/140.0.7339.123-3/g' feeds/helloworld/naiveproxy/Makefile
 
 # =========================================================
-# 彻底根除 v2ray-plugin 编译错误的组合拳（diy-part2 专用版）
+# 彻底根除 v2ray/xray-plugin 编译错误的组合拳（diy-part2 专用版）
 # =========================================================
 
 
-echo "开始精准清洗冲突依赖..."
+#!/bin/bash
 
-# 1. 【精准替换】只切断依赖 + 连坐，避免留下孤立的冒号导致语法错误
+echo "================================================="
+echo "开始全自动执行：双插件（v2ray/xray-plugin）深度清洗..."
+echo "================================================="
+
+# 1. 【精准斩断】仅剔除 Makefile 里的混淆插件依赖，绝不误伤 Shadowsocks 核心组件
 find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+v2ray-plugin//g' 2>/dev/null
-find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/v2ray-plugin//g' 2>/dev/null
-# 修复刚才用力过猛留下的冒号尾巴
-find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/_v2ray-plugin//g' 2>/dev/null
-find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/_V2ray_Plugin://g' 2>/dev/null
+find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+xray-plugin//g' 2>/dev/null
 
-# 2. 物理抹除 v2ray-plugin 源码
+# 2. 【物理蒸发】彻底移除这两个导致报错的 Go 语言源码目录
 rm -rf feeds/helloworld/v2ray-plugin/
+rm -rf feeds/helloworld/xray-plugin/
 rm -rf feeds/small/v2ray-plugin/
+rm -rf feeds/small/xray-plugin/
 rm -rf feeds/kenzo/v2ray-plugin/
-rm -rf package/feeds/helloworld/v2ray-plugin/
-rm -rf package/feeds/small/v2ray-plugin/
-rm -rf package/feeds/kenzo/v2ray-plugin/
+rm -rf feeds/kenzo/xray-plugin/
 
-# 3. 【新增】强行在编译前把导致循环依赖（Recursive）的乱炖插件干掉
-# 既然你用 PassWall2/SSR+，这些引战的新插件（fchomo/mihomo/nikki）直接声明不编译
+rm -rf package/feeds/helloworld/v2ray-plugin/
+rm -rf package/feeds/helloworld/xray-plugin/
+rm -rf package/feeds/small/v2ray-plugin/
+rm -rf package/feeds/small/xray-plugin/
+rm -rf package/feeds/kenzo/v2ray-plugin/
+rm -rf package/feeds/kenzo/xray-plugin/
+
+# 3. 【配置清洗】强行关掉 .config 里的这哥俩，确保编译器不会惯性寻找
 if [ -f .config ]; then
-    # 强制关闭 fchomo
-    sed -i '/CONFIG_PACKAGE_luci-app-fchomo/d' .config
-    echo "CONFIG_PACKAGE_luci-app-fchomo=n" >> .config
+    sed -i '/CONFIG_PACKAGE_v2ray-plugin/d' .config
+    sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d' .config
+    sed -i '/CONFIG_PACKAGE_xray-plugin/d' .config
     
-    # 强制关闭 mihomo 冲突项
-    sed -i '/CONFIG_PACKAGE_mihomo/d' .config
-    echo "CONFIG_PACKAGE_mihomo-alpha=n" >> .config
-    echo "CONFIG_PACKAGE_mihomo-meta=n" >> .config
-    
-    # 强制关闭 nikki
-    sed -i '/CONFIG_PACKAGE_nikki/d' .config
-    echo "CONFIG_PACKAGE_nikki=n" >> .config
+    echo "CONFIG_PACKAGE_v2ray-plugin=n" >> .config
+    echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >> .config
+    echo "CONFIG_PACKAGE_xray-plugin=n" >> .config
 fi
 
-echo "冲突依赖清洗完毕！"
+echo "================================================="
+echo "双插件清洗完毕，您可以放心提交云编译了！"
+echo "================================================="
