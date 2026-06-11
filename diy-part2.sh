@@ -64,40 +64,40 @@ git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 
 #!/bin/bash
 
-echo "================================================="
-echo "开始全自动执行：双插件（v2ray/xray-plugin）深度清洗..."
-echo "================================================="
+#echo "================================================="
+#echo "开始全自动执行：双插件（v2ray/xray-plugin）深度清洗..."
+#echo "================================================="
 
 # 1. 【精准斩断】仅剔除 Makefile 里的混淆插件依赖，绝不误伤 Shadowsocks 核心组件
-find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+v2ray-plugin//g' 2>/dev/null
-find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+xray-plugin//g' 2>/dev/null
+#find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+v2ray-plugin//g' 2>/dev/null
+#find feeds/ package/ -type f -name "Makefile" | xargs sed -i 's/\+xray-plugin//g' 2>/dev/null
 
 # 2. 【物理蒸发】彻底移除这两个导致报错的 Go 语言源码目录
-rm -rf feeds/helloworld/v2ray-plugin/
-rm -rf feeds/helloworld/xray-plugin/
-rm -rf feeds/small/v2ray-plugin/
-rm -rf feeds/small/xray-plugin/
-rm -rf feeds/kenzo/v2ray-plugin/
-rm -rf feeds/kenzo/xray-plugin/
+#rm -rf feeds/helloworld/v2ray-plugin/
+#rm -rf feeds/helloworld/xray-plugin/
+#rm -rf feeds/small/v2ray-plugin/
+#rm -rf feeds/small/xray-plugin/
+#rm -rf feeds/kenzo/v2ray-plugin/
+#rm -rf feeds/kenzo/xray-plugin/
 
-rm -rf package/feeds/helloworld/v2ray-plugin/
-rm -rf package/feeds/helloworld/xray-plugin/
-rm -rf package/feeds/small/v2ray-plugin/
-rm -rf package/feeds/small/xray-plugin/
-rm -rf package/feeds/kenzo/v2ray-plugin/
-rm -rf package/feeds/kenzo/xray-plugin/
+#rm -rf package/feeds/helloworld/v2ray-plugin/
+#rm -rf package/feeds/helloworld/xray-plugin/
+#rm -rf package/feeds/small/v2ray-plugin/
+#rm -rf package/feeds/small/xray-plugin/
+#rm -rf package/feeds/kenzo/v2ray-plugin/
+#rm -rf package/feeds/kenzo/xray-plugin/
 
 # 3. 【配置清洗】强行关掉 .config 里的这哥俩，确保编译器不会惯性寻找
-if [ -f .config ]; then
-    sed -i '/CONFIG_PACKAGE_v2ray-plugin/d' .config
-    sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d' .config
-    sed -i '/CONFIG_PACKAGE_xray-plugin/d' .config
-    
-    echo "CONFIG_PACKAGE_v2ray-plugin=n" >> .config
-    echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >> .config
-    echo "CONFIG_PACKAGE_xray-plugin=n" >> .config
-fi
+#if [ -f .config ]; then
+#    sed -i '/CONFIG_PACKAGE_v2ray-plugin/d' .config
+#    sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d' .config
+#    sed -i '/CONFIG_PACKAGE_xray-plugin/d' .config
+#    
+#    echo "CONFIG_PACKAGE_v2ray-plugin=n" >> .config
+#    echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >> .config
+#    echo "CONFIG_PACKAGE_xray-plugin=n" >> .config
+#fi
 
-echo "================================================="
-echo "双插件清洗完毕，您可以放心提交云编译了！"
-echo "================================================="
+#echo "================================================="
+#echo "双插件清洗完毕，您可以放心提交云编译了！"
+#echo "================================================="
