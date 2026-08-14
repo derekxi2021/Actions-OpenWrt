@@ -107,7 +107,7 @@ echo ">>> 正在从 CDN 下载最新的 geosite / geoip 数据库..."
 mkdir -p files/usr/share/v2ray/
 mkdir -p files/usr/share/xray/
 
-# 2. 从 CDN 高速下载 Loyalsoldier 最新数据库
+# 2. 从 github.com/Loyalsoldier 高速下载 Loyalsoldier 最新数据库
 curl -sSL -o files/usr/share/v2ray/geoip.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
 curl -sSL -o files/usr/share/v2ray/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
 
