@@ -108,8 +108,8 @@ mkdir -p files/usr/share/v2ray/
 mkdir -p files/usr/share/xray/
 
 # 2. 从 CDN 高速下载 Loyalsoldier 最新数据库
-curl -sSL -o files/usr/share/v2ray/geoip.dat https://testingcf.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat
-curl -sSL -o files/usr/share/v2ray/geosite.dat https://testingcf.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat
+curl -sSL -o files/usr/share/v2ray/geoip.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
+curl -sSL -o files/usr/share/v2ray/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
 
 # 3. 同步一份给 xray 目录，确保 PassWall2 调用哪个核心都能用到最新库
 cp -f files/usr/share/v2ray/geoip.dat files/usr/share/xray/geoip.dat
