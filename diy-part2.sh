@@ -98,6 +98,35 @@ git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 #    echo "CONFIG_PACKAGE_xray-plugin=n" >> .config
 #fi
 
+# =========================================================
+# 自动拉取 Loyalsoldier 最新 geosite/geoip 规则并注入固件
+# =========================================================
+echo ">>> 正在从 CDN 下载最新的 geosite / geoip 数据库..."
+
+# 1. 创建打包所需的镜像文件夹（涵盖 v2ray 与 xray 路径）
+mkdir -p files/usr/share/v2ray/
+mkdir -p files/usr/share/xray/
+
+# 2. 从 CDN 高速下载 Loyalsoldier 最新数据库
+curl -sSL -o files/usr/share/v2ray/geoip.dat https://testingcf.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat
+curl -sSL -o files/usr/share/v2ray/geosite.dat https://testingcf.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat
+
+# 3. 同步一份给 xray 目录，确保 PassWall2 调用哪个核心都能用到最新库
+cp -f files/usr/share/v2ray/geoip.dat files/usr/share/xray/geoip.dat
+cp -f files/usr/share/v2ray/geosite.dat files/usr/share/xray/geosite.dat
+
+# 4. 【关键补充】将 rule 路径写入固件的 sysupgrade 默认保留配置中
+# 这样以后你在 LuCI 网页端刷机时，系统天生就会自动勾选保留这两个文件，不会再被覆盖
+SYSUPGRADE_CONF="package/base-files/files/etc/sysupgrade.conf"
+if [ -f "$SYSUPGRADE_CONF" ]; then
+    grep -q "/usr/share/v2ray/geosite.dat" "$SYSUPGRADE_CONF" || echo "/usr/share/v2ray/geosite.dat" >> "$SYSUPGRADE_CONF"
+    grep -q "/usr/share/v2ray/geoip.dat" "$SYSUPGRADE_CONF" || echo "/usr/share/v2ray/geoip.dat" >> "$SYSUPGRADE_CONF"
+    grep -q "/usr/share/xray/geosite.dat" "$SYSUPGRADE_CONF" || echo "/usr/share/xray/geosite.dat" >> "$SYSUPGRADE_CONF"
+    grep -q "/usr/share/xray/geoip.dat" "$SYSUPGRADE_CONF" || echo "/usr/share/xray/geoip.dat" >> "$SYSUPGRADE_CONF"
+fi
+
+echo ">>> 最新 geosite / geoip 数据库注入完成！"
+
 #echo "================================================="
 #echo "双插件清洗完毕，您可以放心提交云编译了！"
 #echo "================================================="
