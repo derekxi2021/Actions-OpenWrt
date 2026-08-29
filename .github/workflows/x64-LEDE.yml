@@ -62,15 +62,22 @@ jobs:
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 512
+        root-reserve-mb: 2048
         swap-size-mb: 1024
-        temp-reserve-mb: 100
+        temp-reserve-mb: 512
         remove-dotnet: true
         remove-android: true
         remove-haskell: true
         remove-codeql: true
         remove-docker-images: true
         build-mount-path: '/workdir'
+
+    # 将系统临时目录指向 /workdir/tmp，防止 /tmp 塞爆根目录
+    - name: Redirect TMPDIR to workdir
+      run: |
+        sudo mkdir -p /workdir/tmp
+        sudo chmod 1777 /workdir/tmp
+        echo "TMPDIR=/workdir/tmp" >> $GITHUB_ENV
 
     - name: Checkout
       uses: actions/checkout@main
@@ -129,7 +136,7 @@ jobs:
     - name: Init Ccache Config
       run: |
         mkdir -p ~/.ccache
-        ccache -M 10G
+        ccache -M 5G
         ccache -o compression=true
         ccache -z
           
