@@ -38,7 +38,7 @@ env:
   CCACHE_DIR: /home/runner/.ccache
   CCACHE_BASEDIR: /workdir/openwrt
   CCACHE_NOHASHDIR: "true"
-  CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime
+  CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
   
 jobs:
   build:
@@ -106,15 +106,29 @@ jobs:
     - name: Cache Ccache Files
       uses: actions/cache@v4
       with:
-        path: /home/runner/.ccache
-        key: ${{ runner.os }}-ccache-x86-lede-${{ github.ref_name }}-${{ github.run_id }}
+        path: ~/.ccache
+        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
         restore-keys: |
-          ${{ runner.os }}-ccache-x86-lede-${{ github.ref_name }}-
-          ${{ runner.os }}-ccache-x86-lede-
+          ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
+          ${{ runner.os }}-openwrt-ccache-x86-lede-
+          ${{ runner.os }}-openwrt-ccache-
 
+    # 新增：恢复/保存 Host Tools 缓存 (x86-lede 专属)
+    - name: Cache Host Tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/staging_dir/host
+          /workdir/openwrt/staging_dir/hostpkg
+        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-v1
+        restore-keys: |
+          ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-
+          ${{ runner.os }}-openwrt-host-x86-lede-
+          
     # 3. 初始化 Ccache 压缩与大小
     - name: Init Ccache Config
       run: |
+        mkdir -p ~/.ccache
         ccache -M 10G
         ccache -o compression=true
         ccache -z
@@ -164,12 +178,6 @@ jobs:
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         make defconfig
-        
-        # 创建链接劫持 OpenWrt 宿主编译器
-        mkdir -p staging_dir/host/bin
-        ln -sf $(which ccache) staging_dir/host/bin/ccache
-        ln -sf $(which ccache) staging_dir/host/bin/gcc
-        ln -sf $(which ccache) staging_dir/host/bin/g++
         
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
