@@ -87,7 +87,33 @@ jobs:
 #        large-packages: true
 #        docker-images: true
 #        swap-storage: true
-              
+
+    # 1. 系统级 Ccache 挂载
+    - name: Install & Setup Ccache Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ccache
+        mkdir -p ~/.ccache
+        echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+        echo "/usr/lib/ccache" >> $GITHUB_PATH
+
+    # 2. 恢复 / 保存 Ccache 缓存
+    - name: Cache Ccache Files
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-x86_64-lede-${{ github.ref_name }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-x86_64-lede-${{ github.ref_name }}-
+          ${{ runner.os }}-ccache-x86_64-lede-
+
+    # 3. 初始化 Ccache 压缩与大小
+    - name: Init Ccache Config
+      run: |
+        ccache -M 10G
+        ccache -o compression=true
+        ccache -z
+          
     - name: Clone source code
       working-directory: /workdir
       run: |
