@@ -144,8 +144,19 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        # 临时移出 Host Tools 缓存，彻底清空 openwrt 目录后 clone，再还原 Host Tools
+        if [ -d "openwrt/staging_dir" ]; then
+          mkdir -p /tmp/staging_dir_bak
+          mv openwrt/staging_dir /tmp/staging_dir_bak/
+          rm -rf openwrt
+          git clone $REPO_URL -b $REPO_BRANCH openwrt
+          mkdir -p openwrt/staging_dir
+          mv /tmp/staging_dir_bak/staging_dir/* openwrt/staging_dir/
+          rm -rf /tmp/staging_dir_bak
+        else
+          rm -rf openwrt
+          git clone $REPO_URL -b $REPO_BRANCH openwrt
+        fi        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
     
     - name: Load custom feeds
       run: |
