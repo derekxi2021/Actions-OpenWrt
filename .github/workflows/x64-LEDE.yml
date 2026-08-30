@@ -38,10 +38,11 @@ env:
   CCACHE_BASEDIR: /workdir/openwrt
   CCACHE_NOHASHDIR: "true"
   CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
-
+  
 jobs:
   build:
     runs-on: ubuntu-22.04
+    
     steps:
     - name: Initialization environment
       env:
