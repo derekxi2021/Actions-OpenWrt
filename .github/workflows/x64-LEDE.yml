@@ -80,7 +80,7 @@ jobs:
         echo "TMPDIR=/workdir/tmp" >> $GITHUB_ENV
 
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 #      with:
 #        fetch-depth: 0
         
@@ -100,42 +100,28 @@ jobs:
 #        docker-images: true
 #        swap-storage: true
 
-    # 1. 系统级 Ccache 挂载
-    - name: Install & Setup Ccache Environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ccache
-        mkdir -p ~/.ccache
-        echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
-        echo "/usr/lib/ccache" >> $GITHUB_PATH
 
-    # 2. 恢复 / 保存 Ccache 缓存 (x86-lede 专属隔离)
+    # 1. Ccache 远程缓存恢复/保存
     - name: Cache Ccache Files
       uses: actions/cache@v4
       with:
         path: ~/.ccache
-        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
+        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
           ${{ runner.os }}-openwrt-ccache-x86-lede-
           ${{ runner.os }}-openwrt-ccache-
 
-    # 2. 恢复/保存 Host Tools 缓存
-    - name: Save Host Tools to Cache Dir
-      if: steps.compile.outputs.status == 'success' && !cancelled()
-      run: |
-        sudo mkdir -p /workdir/host_cache
-        # 先赋予当前用户对缓存目录的完整读写权限
-        sudo chown -R $USER:$USER /workdir/host_cache 2>/dev/null || true
-          
-        if [ -d "/workdir/openwrt/staging_dir/host" ]; then
-            mkdir -p /workdir/host_cache/host
-            cp -ru /workdir/openwrt/staging_dir/host/. /workdir/host_cache/host/
-        fi
-        if [ -d "/workdir/openwrt/staging_dir/hostpkg" ]; then
-            mkdir -p /workdir/host_cache/hostpkg
-            cp -ru /workdir/openwrt/staging_dir/hostpkg/. /workdir/host_cache/hostpkg/
-        fi
+     # 2. Host Tools 远程缓存恢复/保存
+     - name: Cache Host Tools
+       uses: actions/cache@v4
+       with:
+        path: |
+          /workdir/host_cache
+        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}
+          ${{ runner.os }}-openwrt-host-x86-lede-
 
     # 3. 初始化 Ccache 压缩与大小
     - name: Init Ccache Config
@@ -152,7 +138,7 @@ jobs:
         rm -rf openwrt
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         
-        # 如果存在 Host Tools 缓存，还原到 staging_dir
+        # 还原 Host Tools 缓存到 openwrt/staging_dir
         if [ -d "/workdir/host_cache/host" ]; then
           echo "Restoring Host Tools Cache..."
           mkdir -p openwrt/staging_dir
@@ -223,7 +209,7 @@ jobs:
         mkdir -p /workdir/host_cache
         [ -d "/workdir/openwrt/staging_dir/host" ] && cp -ru /workdir/openwrt/staging_dir/host /workdir/host_cache/
         [ -d "/workdir/openwrt/staging_dir/hostpkg" ] && cp -ru /workdir/openwrt/staging_dir/hostpkg /workdir/host_cache/
-        
+
     - name: Check space usage
       if: (!cancelled())
       run: df -hT
@@ -261,7 +247,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
-      uses: softprops/action-gh-release@master
+      uses: softprops/action-gh-release@v2
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -271,7 +257,7 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
 
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@main
+      uses: Mattraks/delete-workflow-runs@v2
       with:
         retain_days: 0
         keep_minimum_runs: 2
