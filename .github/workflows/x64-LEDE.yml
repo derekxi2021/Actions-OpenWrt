@@ -40,7 +40,7 @@ env:
   CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
 
 jobs:
-  build:
+    build:
     runs-on: ubuntu-22.04
 
     steps:
