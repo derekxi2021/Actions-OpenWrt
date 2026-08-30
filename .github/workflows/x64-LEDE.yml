@@ -15,14 +15,14 @@ name: Build x86-64-LEDE
 on:
   repository_dispatch:
   schedule:
-  - cron: 0 1 1 * *
+    - cron: 0 1 1 * *
   workflow_dispatch:
     inputs:
       ssh:
         description: 'SSH connection to Actions'
         required: false
         default: 'false'
-        
+
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
@@ -34,12 +34,11 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-# ===== Ccache 配置环境变量 =====
   CCACHE_DIR: /home/runner/.ccache
   CCACHE_BASEDIR: /workdir/openwrt
   CCACHE_NOHASHDIR: "true"
   CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
-  
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -58,6 +57,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
+        echo "/usr/lib/ccache" >> $GITHUB_PATH
 
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
@@ -65,20 +65,19 @@ jobs:
         root-reserve-mb: 2048
         swap-size-mb: 1024
         temp-reserve-mb: 512
-        remove-dotnet: true
-        remove-android: true
-        remove-haskell: true
-        remove-codeql: true
-        remove-docker-images: true
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
         build-mount-path: '/workdir'
 
-    # 将系统临时目录指向 /workdir/tmp，防止 /tmp 塞爆根目录
     - name: Redirect TMPDIR to workdir
       run: |
         sudo mkdir -p /workdir/tmp
         sudo chmod 1777 /workdir/tmp
         echo "TMPDIR=/workdir/tmp" >> $GITHUB_ENV
-
+        
     - name: Checkout
       uses: actions/checkout@v4
 #      with:
