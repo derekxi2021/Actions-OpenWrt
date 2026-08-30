@@ -120,13 +120,11 @@ jobs:
           ${{ runner.os }}-openwrt-ccache-x86-lede-
           ${{ runner.os }}-openwrt-ccache-
 
-    # 新增：恢复/保存 Host Tools 缓存 (x86-lede 专属)
+    # 2. 恢复/保存 Host Tools 缓存
     - name: Cache Host Tools
       uses: actions/cache@v4
       with:
-        path: |
-          /workdir/openwrt/staging_dir/host
-          /workdir/openwrt/staging_dir/hostpkg
+        path: /workdir/host_cache
         key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-v1
         restore-keys: |
           ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-
@@ -144,19 +142,17 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        # 临时移出 Host Tools 缓存，彻底清空 openwrt 目录后 clone，再还原 Host Tools
-        if [ -d "openwrt/staging_dir" ]; then
-          mkdir -p /tmp/staging_dir_bak
-          mv openwrt/staging_dir /tmp/staging_dir_bak/
-          rm -rf openwrt
-          git clone $REPO_URL -b $REPO_BRANCH openwrt
+        rm -rf openwrt
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        
+        # 如果存在 Host Tools 缓存，还原到 staging_dir
+        if [ -d "/workdir/host_cache/host" ]; then
+          echo "Restoring Host Tools Cache..."
           mkdir -p openwrt/staging_dir
-          mv /tmp/staging_dir_bak/staging_dir/* openwrt/staging_dir/
-          rm -rf /tmp/staging_dir_bak
-        else
-          rm -rf openwrt
-          git clone $REPO_URL -b $REPO_BRANCH openwrt
-        fi        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          cp -rn /workdir/host_cache/* openwrt/staging_dir/
+        fi
+
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
     
     - name: Load custom feeds
       run: |
@@ -213,6 +209,13 @@ jobs:
         echo "=========================================="
         ccache -s
         echo "=========================================="
+
+    - name: Save Host Tools to Cache Dir
+      if: steps.compile.outputs.status == 'success' && !cancelled()
+      run: |
+        mkdir -p /workdir/host_cache
+        [ -d "/workdir/openwrt/staging_dir/host" ] && cp -ru /workdir/openwrt/staging_dir/host /workdir/host_cache/
+        [ -d "/workdir/openwrt/staging_dir/hostpkg" ] && cp -ru /workdir/openwrt/staging_dir/hostpkg /workdir/host_cache/
         
     - name: Check space usage
       if: (!cancelled())
