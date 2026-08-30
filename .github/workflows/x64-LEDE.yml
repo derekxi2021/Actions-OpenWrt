@@ -121,15 +121,22 @@ jobs:
           ${{ runner.os }}-openwrt-ccache-
 
     # 2. 恢复/保存 Host Tools 缓存
-    - name: Cache Host Tools
-      uses: actions/cache@v4
-      with:
-        path: /workdir/host_cache
-        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-v1
-        restore-keys: |
-          ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-
-          ${{ runner.os }}-openwrt-host-x86-lede-
+    - name: Save Host Tools to Cache Dir
+      if: steps.compile.outputs.status == 'success' && !cancelled()
+      run: |
+        sudo mkdir -p /workdir/host_cache
+        # 先赋予当前用户对缓存目录的完整读写权限
+        sudo chown -R $USER:$USER /workdir/host_cache 2>/dev/null || true
           
+        if [ -d "/workdir/openwrt/staging_dir/host" ]; then
+            mkdir -p /workdir/host_cache/host
+            cp -ru /workdir/openwrt/staging_dir/host/. /workdir/host_cache/host/
+        fi
+        if [ -d "/workdir/openwrt/staging_dir/hostpkg" ]; then
+            mkdir -p /workdir/host_cache/hostpkg
+            cp -ru /workdir/openwrt/staging_dir/hostpkg/. /workdir/host_cache/hostpkg/
+        fi
+
     # 3. 初始化 Ccache 压缩与大小
     - name: Init Ccache Config
       run: |
