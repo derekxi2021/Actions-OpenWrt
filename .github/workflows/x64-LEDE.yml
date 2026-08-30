@@ -42,7 +42,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
+    permissions:
+      contents: write
+      actions: write
+      
     steps:
     - name: Initialization environment
       env:
@@ -105,19 +108,18 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.ccache
-        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.sha }}
+        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
         restore-keys: |
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
           ${{ runner.os }}-openwrt-ccache-x86-lede-
           ${{ runner.os }}-openwrt-ccache-
 
      # 2. Host Tools 远程缓存恢复/保存
-     - name: Cache Host Tools
-       uses: actions/cache@v4
-       with:
-        path: |
-          /workdir/host_cache
-        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.sha }}
+    - name: Cache Host Tools
+      uses: actions/cache@v4
+      with:
+        path: /workdir/host_cache
+        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}
         restore-keys: |
           ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}
           ${{ runner.os }}-openwrt-host-x86-lede-
@@ -181,6 +183,9 @@ jobs:
       run: |
         cd openwrt
         # 写入 Ccache 编译开关
+        export CCACHE_DIR=/home/runner/.ccache
+        export CCACHE_BASEDIR=/workdir/openwrt
+        export PATH="/usr/lib/ccache:$PATH"
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         make defconfig
@@ -214,7 +219,7 @@ jobs:
       run: df -hT
 
     - name: Upload bin directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
