@@ -131,15 +131,15 @@ else
     rm -rf files/usr/share/v2ray
 fi
 
-# 1. 彻底移除当前有问题的 gettext-full
-rm -rf package/libs/gettext-full
+# 修复 gettext-full 0.24.2 的 BISON_LOCALEDIR 缺失 Bug
+GETTEXT_MAKEFILE="package/libs/gettext-full/Makefile"
+if [ -f "$GETTEXT_MAKEFILE" ]; then
+    # 强制在 Makefile 末尾追加全局 HOST 编译宏，防止被覆盖
+    echo 'HOST_CFLAGS += -DBISON_LOCALEDIR=\"/usr/share/locale\"' >> $GETTEXT_MAKEFILE
+    echo 'HOST_CPPFLAGS += -DBISON_LOCALEDIR=\"/usr/share/locale\"' >> $GETTEXT_MAKEFILE
+fi
 
-# 2. 从 OpenWrt 23.05 稳定分支拉取 100% 可用的 0.22.5 版本
-git clone --depth=1 -b openwrt-23.05 https://github.com/openwrt/openwrt.git /tmp/openwrt-stable
-cp -r /tmp/openwrt-stable/package/libs/gettext-full package/libs/
-rm -rf /tmp/openwrt-stable
-
-# 3. 强行抹除从 Actions 缓存中还原出来的旧版 Host 工具与编译标记（关键点！）
+# 清理旧的编译标记
 rm -rf staging_dir/hostpkg/bin/msgfmt*
 rm -rf staging_dir/hostpkg/share/gettext*
 rm -rf build_dir/hostpkg/gettext-*
