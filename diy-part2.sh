@@ -135,21 +135,13 @@ fi
 rm -rf "$TMP_GEO_DIR"
 echo ">>> geosite / geoip 规则自动化处理完成！"
 
-# =========================================================
-# 暴力打补丁：直接向 gettext 的 msgcmp.c 注入 BISON_LOCALEDIR 定义
-# =========================================================
-echo ">>> 打补丁修复 msgcmp.c 的 BISON_LOCALEDIR 丢失问题..."
-find build_dir/package/ build_dir/hostpkg/ -name "msgcmp.c" 2>/dev/null | while read -r file; do
-    if ! grep -q "BISON_LOCALEDIR" "$file"; then
-        continue
-    fi
-    sed -i '/#include/a #ifndef BISON_LOCALEDIR\n#define BISON_LOCALEDIR "/workdir/openwrt/staging_dir/hostpkg/share/locale"\n#endif' "$file"
-done
-
-# 如果源码还没解压（build_dir 里还没有），直接给 feeds/package 里的 Makefile 注入 HOST_CPPFLAGS
-GETTEXT_MAKEFILE=$(find feeds/ package/ -type f -path "*/gettext-full/Makefile" 2>/dev/null | head -n 1)
-if [ -n "$GETTEXT_MAKEFILE" ]; then
-    sed -i 's/HOST_CONFIGURE_ARGS:=/HOST_CONFIGURE_ARGS:= CPPFLAGS="-DBISON_LOCALEDIR=\\"\/workdir\/openwrt\/staging_dir\/hostpkg\/share\/locale\\"" /g' "$GETTEXT_MAKEFILE"
+# 回退 gettext-full 版本至 0.23.1 并清理冲突补丁
+GETTEXT_PATH="package/libs/gettext-full/Makefile"
+if [ -f "$GETTEXT_PATH" ]; then
+    sed -i 's/PKG_VERSION:=.*/PKG_VERSION:=0.23.1/' $GETTEXT_PATH
+    sed -i 's/PKG_HASH:=.*/PKG_HASH:=3183574972740dfbc462e08678ff4233ccf960f5e13d9ccbc43c1626f284e363/' $GETTEXT_PATH
+    # 清理可能针对 0.24.2 专用的 patches 目录，防止 Apply patch 失败
+    rm -rf package/libs/gettext-full/patches
 fi
 
 #echo "================================================="
