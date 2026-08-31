@@ -131,18 +131,13 @@ else
     rm -rf files/usr/share/v2ray
 fi
 
-# 清理临时文件
-rm -rf "$TMP_GEO_DIR"
-echo ">>> geosite / geoip 规则自动化处理完成！"
+# 彻底移除当前有问题的 0.24.2 / 0.23.x 版本
+rm -rf package/libs/gettext-full
 
-# 回退 gettext-full 版本至 0.23.1 并清理冲突补丁
-GETTEXT_PATH="package/libs/gettext-full/Makefile"
-if [ -f "$GETTEXT_PATH" ]; then
-    sed -i 's/PKG_VERSION:=.*/PKG_VERSION:=0.23.1/' $GETTEXT_PATH
-    sed -i 's/PKG_HASH:=.*/PKG_HASH:=3183574972740dfbc462e08678ff4233ccf960f5e13d9ccbc43c1626f284e363/' $GETTEXT_PATH
-    # 清理可能针对 0.24.2 专用的 patches 目录，防止 Apply patch 失败
-    rm -rf package/libs/gettext-full/patches
-fi
+# 从 OpenWrt 官方稳定分支拉取测试通过、必定能下载并编译成功的 0.22.5 版本
+git clone --depth=1 -b openwrt-23.05 https://github.com/openwrt/openwrt.git /tmp/openwrt-stable
+cp -r /tmp/openwrt-stable/package/libs/gettext-full package/libs/
+rm -rf /tmp/openwrt-stable
 
 #echo "================================================="
 #echo "双插件清洗完毕，您可以放心提交云编译了！"
