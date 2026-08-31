@@ -142,12 +142,14 @@ jobs:
         # 还原 Host Tools 缓存到 openwrt/staging_dir
         if [ -d "/workdir/host_cache/host" ]; then
           echo "Restoring Host Tools Cache..."
+          # 增加这行：确保还原出来的缓存文件属于当前用户
+          [ -d "/workdir/host_cache" ] && sudo chown -R $USER:$GROUPS /workdir/host_cache
           mkdir -p openwrt/staging_dir
           cp -rn /workdir/host_cache/* openwrt/staging_dir/
         fi
 
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-    
+        
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
@@ -207,10 +209,12 @@ jobs:
         ccache -s
         echo "=========================================="
 
-    - name: Save Host Tools to Cache Dir
+    - name: Sync Host Tools to Cache Dir
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         mkdir -p /workdir/host_cache
+        # 增加这行：清空/覆盖前先夺回 host_cache 目录的所有权
+        sudo chown -R $USER:$GROUPS /workdir/host_cache
         [ -d "/workdir/openwrt/staging_dir/host" ] && cp -ru /workdir/openwrt/staging_dir/host /workdir/host_cache/
         [ -d "/workdir/openwrt/staging_dir/hostpkg" ] && cp -ru /workdir/openwrt/staging_dir/hostpkg /workdir/host_cache/
 
