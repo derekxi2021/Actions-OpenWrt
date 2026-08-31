@@ -99,19 +99,41 @@ git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 #fi
 
 # =========================================================
-# 自动拉取 Loyalsoldier 最新 geosite/geoip 规则并注入固件
+# 云编译专用：动态拉取 Loyalsoldier 规则 + 自动保底/防覆盖
 # =========================================================
-echo ">>> 正在下载最新的 geosite / geoip 数据库..."
+echo ">>> 开始处理 geosite / geoip 规则数据库..."
 
-# 1. 彻底清理并创建唯一需要的 v2ray 目标文件夹
-rm -rf files/usr/share/xray files/usr/share/v2ray
-mkdir -p files/usr/share/v2ray/
+# 1. 创建临时下载目录与最终注入目录
+TMP_GEO_DIR="/tmp/geo_rules_tmp"
+rm -rf "$TMP_GEO_DIR" files/usr/share/v2ray
+mkdir -p "$TMP_GEO_DIR" files/usr/share/v2ray
 
-# 2. 高速下载 Loyalsoldier 最新数据库，直接打包进只读固件中
-curl -sSL -o files/usr/share/v2ray/geoip.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
-curl -sSL -o files/usr/share/v2ray/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+# 2. 尝试拉取 Loyalsoldier 最新规则（设置超时，防止 Actions 挂起）
+echo ">>> 尝试下载 Loyalsoldier 最新规则..."
+curl -sSL --connect-timeout 15 -m 30 -o "$TMP_GEO_DIR/geoip.dat" https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
+curl -sSL --connect-timeout 15 -m 30 -o "$TMP_GEO_DIR/geosite.dat" https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
 
-echo ">>> 最新 geosite / geoip 数据库注入完成！"
+# 3. 校验下载有效性（检查文件体积是否大于 1MB，排除网络拦截或 404 页面）
+GEOIP_SIZE=$(stat -c%s "$TMP_GEO_DIR/geoip.dat" 2>/dev/null || echo 0)
+GEOSITE_SIZE=$(stat -c%s "$TMP_GEO_DIR/geosite.dat" 2>/dev/null || echo 0)
+
+if [ "$GEOIP_SIZE" -gt 1048576 ] && [ "$GEOSITE_SIZE" -gt 1048576 ]; then
+    echo ">>> Loyalsoldier 最新规则拉取成功！已放入 files/usr/share/v2ray/"
+    mv "$TMP_GEO_DIR/geoip.dat" files/usr/share/v2ray/
+    mv "$TMP_GEO_DIR/geosite.dat" files/usr/share/v2ray/
+
+    # 关键防覆盖逻辑：拉取成功时，用 sed 动态修改源码里的 Makefile，把强制覆盖 cp -f 改为不覆盖 cp -n
+    # 这样自编译出来的旧 dat 就不会冲掉刚才下载的最新 dat
+    find feeds/ package/ -type f -path "*/v2ray-geodata/Makefile" -exec sed -i 's/cp -f/cp -n/g' {} + 2>/dev/null
+    find feeds/ package/ -type f -path "*/v2ray-core/Makefile" -exec sed -i 's/cp -f/cp -n/g' {} + 2>/dev/null
+else
+    echo ">>> [警告] 最新规则拉取失败或超时，自动回退使用源码自带编译版本！"
+    rm -rf files/usr/share/v2ray
+fi
+
+# 清理临时文件
+rm -rf "$TMP_GEO_DIR"
+echo ">>> geosite / geoip 规则自动化处理完成！"
 
 #echo "================================================="
 #echo "双插件清洗完毕，您可以放心提交云编译了！"
