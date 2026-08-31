@@ -136,15 +136,20 @@ rm -rf "$TMP_GEO_DIR"
 echo ">>> geosite / geoip 规则自动化处理完成！"
 
 # =========================================================
-# 修复 gettext-full 编译报错 (BISON_LOCALEDIR undeclared)
+# 暴力打补丁：直接向 gettext 的 msgcmp.c 注入 BISON_LOCALEDIR 定义
 # =========================================================
+echo ">>> 打补丁修复 msgcmp.c 的 BISON_LOCALEDIR 丢失问题..."
+find build_dir/package/ build_dir/hostpkg/ -name "msgcmp.c" 2>/dev/null | while read -r file; do
+    if ! grep -q "BISON_LOCALEDIR" "$file"; then
+        continue
+    fi
+    sed -i '/#include/a #ifndef BISON_LOCALEDIR\n#define BISON_LOCALEDIR "/workdir/openwrt/staging_dir/hostpkg/share/locale"\n#endif' "$file"
+done
+
+# 如果源码还没解压（build_dir 里还没有），直接给 feeds/package 里的 Makefile 注入 HOST_CPPFLAGS
 GETTEXT_MAKEFILE=$(find feeds/ package/ -type f -path "*/gettext-full/Makefile" 2>/dev/null | head -n 1)
 if [ -n "$GETTEXT_MAKEFILE" ]; then
-    echo ">>> 正在修复 gettext-full 的 BISON_LOCALEDIR 声明问题..."
-    # 强制在 HOST_CONFIGURE_ARGS 中补上 BISON_LOCALEDIR 定义
-    sed -i '/HOST_CONFIGURE_ARGS/a \  BISON_LOCALEDIR="$(STAGING_DIR_HOSTPKG)/share/locale" \\' "$GETTEXT_MAKEFILE"
-    # 同时在 CFLAGS 中全局注入保底宏，防止 configure 漏掉定义
-    sed -i 's/HOST_CFLAGS:=/HOST_CFLAGS:=-DBISON_LOCALEDIR=\\"\/workdir\/openwrt\/staging_dir\/hostpkg\/share\/locale\\" /g' "$GETTEXT_MAKEFILE"
+    sed -i 's/HOST_CONFIGURE_ARGS:=/HOST_CONFIGURE_ARGS:= CPPFLAGS="-DBISON_LOCALEDIR=\\"\/workdir\/openwrt\/staging_dir\/hostpkg\/share\/locale\\"" /g' "$GETTEXT_MAKEFILE"
 fi
 
 #echo "================================================="
