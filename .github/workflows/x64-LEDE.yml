@@ -179,6 +179,12 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - name: Clean gettext-full host cache
+      run: |
+        rm -rf /workdir/openwrt/build_dir/hostpkg/gettext-*
+        rm -rf /workdir/openwrt/staging_dir/hostpkg/bin/msgfmt
+        rm -rf /workdir/host_cache/hostpkg/bin/msgfmt 2>/dev/null || true
         
     - name: Compile the firmware
       id: compile
