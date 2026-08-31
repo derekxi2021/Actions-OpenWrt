@@ -34,7 +34,7 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-  CCACHE_DIR: /home/runner/.ccache
+  CCACHE_DIR: /workdir/.ccache
   CCACHE_BASEDIR: /workdir/openwrt
   CCACHE_NOHASHDIR: "true"
   CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
@@ -107,7 +107,7 @@ jobs:
     - name: Cache Ccache Files
       uses: actions/cache@v4
       with:
-        path: ~/.ccache
+        path: /workdir/.ccache
         key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
         restore-keys: |
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
@@ -127,7 +127,7 @@ jobs:
     # 3. 初始化 Ccache 压缩与大小
     - name: Init Ccache Config
       run: |
-        mkdir -p ~/.ccache
+        mkdir -p /workdir/.ccache
         ccache -M 5G
         ccache -o compression=true
         ccache -z
@@ -190,10 +190,7 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        # 写入 Ccache 编译开关
-        export CCACHE_DIR=/home/runner/.ccache
-        export CCACHE_BASEDIR=/workdir/openwrt
-        export PATH="/usr/lib/ccache:$PATH"
+        # 确保 .config 中强制开启 Ccache 开关
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         make defconfig
