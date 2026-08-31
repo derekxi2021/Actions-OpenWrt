@@ -131,13 +131,18 @@ else
     rm -rf files/usr/share/v2ray
 fi
 
-# 彻底移除当前有问题的 0.24.2 / 0.23.x 版本
+# 1. 彻底移除当前有问题的 gettext-full
 rm -rf package/libs/gettext-full
 
-# 从 OpenWrt 官方稳定分支拉取测试通过、必定能下载并编译成功的 0.22.5 版本
+# 2. 从 OpenWrt 23.05 稳定分支拉取 100% 可用的 0.22.5 版本
 git clone --depth=1 -b openwrt-23.05 https://github.com/openwrt/openwrt.git /tmp/openwrt-stable
 cp -r /tmp/openwrt-stable/package/libs/gettext-full package/libs/
 rm -rf /tmp/openwrt-stable
+
+# 3. 强行抹除从 Actions 缓存中还原出来的旧版 Host 工具与编译标记（关键点！）
+rm -rf staging_dir/hostpkg/bin/msgfmt*
+rm -rf staging_dir/hostpkg/share/gettext*
+rm -rf build_dir/hostpkg/gettext-*
 
 #echo "================================================="
 #echo "双插件清洗完毕，您可以放心提交云编译了！"
