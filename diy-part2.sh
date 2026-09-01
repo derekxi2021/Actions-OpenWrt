@@ -99,37 +99,58 @@ git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 #fi
 
 # =========================================================
-# 云编译专用：动态拉取 Loyalsoldier 规则 + 自动保底/防覆盖
+# 解决 Kconfig 循环依赖报错 (fchomo / mihomo / nikki)
+# =========================================================
+echo ">>> 清理存在循环依赖冲突的软件包..."
+rm -rf feeds/luci/applications/luci-app-fchomo
+rm -rf feeds/packages/net/mihomo
+rm -rf feeds/packages/net/nikki
+rm -rf package/feeds/luci/luci-app-fchomo
+rm -rf package/feeds/packages/mihomo
+rm -rf package/feeds/packages/nikki
+
+# =========================================================
+# 云编译专用：拉取 Loyalsoldier 规则并进行多路径强制注入与拦截保护
 # =========================================================
 echo ">>> 开始处理 geosite / geoip 规则数据库..."
 
-# 1. 创建临时下载目录与最终注入目录
 TMP_GEO_DIR="/tmp/geo_rules_tmp"
-rm -rf "$TMP_GEO_DIR" files/usr/share/v2ray
-mkdir -p "$TMP_GEO_DIR" files/usr/share/v2ray
+rm -rf "$TMP_GEO_DIR"
+mkdir -p "$TMP_GEO_DIR"
 
-# 2. 尝试拉取 Loyalsoldier 最新规则（设置超时，防止 Actions 挂起）
+# 尝试拉取 Loyalsoldier 最新规则
 echo ">>> 尝试下载 Loyalsoldier 最新规则..."
 curl -sSL --connect-timeout 15 -m 30 -o "$TMP_GEO_DIR/geoip.dat" https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
 curl -sSL --connect-timeout 15 -m 30 -o "$TMP_GEO_DIR/geosite.dat" https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
 
-# 3. 校验下载有效性（检查文件体积是否大于 1MB，排除网络拦截或 404 页面）
 GEOIP_SIZE=$(stat -c%s "$TMP_GEO_DIR/geoip.dat" 2>/dev/null || echo 0)
 GEOSITE_SIZE=$(stat -c%s "$TMP_GEO_DIR/geosite.dat" 2>/dev/null || echo 0)
 
 if [ "$GEOIP_SIZE" -gt 1048576 ] && [ "$GEOSITE_SIZE" -gt 1048576 ]; then
-    echo ">>> Loyalsoldier 最新规则拉取成功！已放入 files/usr/share/v2ray/"
-    mv "$TMP_GEO_DIR/geoip.dat" files/usr/share/v2ray/
-    mv "$TMP_GEO_DIR/geosite.dat" files/usr/share/v2ray/
+    echo ">>> Loyalsoldier 最新规则拉取成功！开始全路径注入..."
+    
+    # 注入 /usr/share/v2ray 路径
+    mkdir -p files/usr/share/v2ray
+    cp -f "$TMP_GEO_DIR/geoip.dat" files/usr/share/v2ray/
+    cp -f "$TMP_GEO_DIR/geosite.dat" files/usr/share/v2ray/
 
-    # 关键防覆盖逻辑：拉取成功时，用 sed 动态修改源码里的 Makefile，把强制覆盖 cp -f 改为不覆盖 cp -n
-    # 这样自编译出来的旧 dat 就不会冲掉刚才下载的最新 dat
-    find feeds/ package/ -type f -path "*/v2ray-geodata/Makefile" -exec sed -i 's/cp -f/cp -n/g' {} + 2>/dev/null
-    find feeds/ package/ -type f -path "*/v2ray-core/Makefile" -exec sed -i 's/cp -f/cp -n/g' {} + 2>/dev/null
+    # 注入 /usr/share/geodata 路径（兼容 PassWall / Mihomo 等新版插件）
+    mkdir -p files/usr/share/geodata
+    cp -f "$TMP_GEO_DIR/geoip.dat" files/usr/share/geodata/
+    cp -f "$TMP_GEO_DIR/geosite.dat" files/usr/share/geodata/
+
+    # 关键步骤：拦截 Makefile 中可能重新覆盖 dat 文件的解压/安装指令
+    find feeds/ package/ -type f -name "Makefile" -exec grep -l "geodata" {} + 2>/dev/null | while read -r file; do
+        sed -i 's/$(INSTALL_DATA) .*geoip.dat/echo "Skip geoip.dat"/g' "$file" 2>/dev/null || true
+        sed -i 's/$(INSTALL_DATA) .*geosite.dat/echo "Skip geosite.dat"/g' "$file" 2>/dev/null || true
+    done
+    
+    echo ">>> 规则替换与 Makefile 防覆盖处理完毕！"
 else
-    echo ">>> [警告] 最新规则拉取失败或超时，自动回退使用源码自带编译版本！"
-    rm -rf files/usr/share/v2ray
+    echo ">>> [警告] 最新规则拉取失败或超时，保留源码自带规则！"
 fi
+
+rm -rf "$TMP_GEO_DIR"
 
 # 修复 gettext-full 0.24.2 的 BISON_LOCALEDIR 缺失 Bug
 GETTEXT_MAKEFILE="package/libs/gettext-full/Makefile"
