@@ -140,12 +140,15 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         
         # 还原 Host Tools 缓存到 openwrt/staging_dir
-        if [ -d "/workdir/host_cache/host" ]; then
+        if [ -d "/workdir/host_cache/host" ] || [ -d "/workdir/host_cache/hostpkg" ]; then
           echo "Restoring Host Tools Cache..."
-          # 增加这行：确保还原出来的缓存文件属于当前用户
-          [ -d "/workdir/host_cache" ] && sudo chown -R $USER:$GROUPS /workdir/host_cache
+          sudo chown -R "$(id -u):$(id -g)" /workdir/host_cache
           mkdir -p openwrt/staging_dir
-          cp -rn /workdir/host_cache/* openwrt/staging_dir/
+          # 用 -a；不要用可能跳过更新的混乱参数
+          [ -d /workdir/host_cache/host ] && cp -a /workdir/host_cache/host openwrt/staging_dir/
+          [ -d /workdir/host_cache/hostpkg ] && cp -a /workdir/host_cache/hostpkg openwrt/staging_dir/
+          # 确保可写，后续编译能更新
+          chmod -R u+w openwrt/staging_dir/host openwrt/staging_dir/hostpkg 2>/dev/null || true
         fi
 
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
@@ -215,22 +218,27 @@ jobs:
     - name: Sync Host Tools to Cache Dir
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        # 1. 创建缓存目录
-        sudo mkdir -p /workdir/host_cache
-        
-        # 2. 递归将整个 host_cache 目录及内部所有文件的所有权切回当前用户 ($USER)
-        sudo chown -R $USER:$GROUPS /workdir/host_cache
-        
-        # 3. 如果 staging_dir 里有文件，复制前也确保它们能被读取，并用 sudo 或直接 cp 进行覆盖
-        if [ -d "/workdir/openwrt/staging_dir/host" ]; then
-          sudo chown -R $USER:$GROUPS /workdir/openwrt/staging_dir/host
-          cp -ru /workdir/openwrt/staging_dir/host /workdir/host_cache/
+        set -e
+        CACHE_ROOT=/workdir/host_cache
+        STAGING=/workdir/openwrt/staging_dir
+
+        sudo mkdir -p "$CACHE_ROOT"
+        # 清掉旧内容，避免只读/旧属主文件挡 cp
+        sudo rm -rf "$CACHE_ROOT/host" "$CACHE_ROOT/hostpkg"
+        sudo mkdir -p "$CACHE_ROOT"
+
+        if [ -d "$STAGING/host" ]; then
+          echo "Caching staging_dir/host ..."
+          sudo cp -a "$STAGING/host" "$CACHE_ROOT/"
         fi
-        
-        if [ -d "/workdir/openwrt/staging_dir/hostpkg" ]; then
-          sudo chown -R $USER:$GROUPS /workdir/openwrt/staging_dir/hostpkg
-          cp -ru /workdir/openwrt/staging_dir/hostpkg /workdir/host_cache/
+        if [ -d "$STAGING/hostpkg" ]; then
+          echo "Caching staging_dir/hostpkg ..."
+          sudo cp -a "$STAGING/hostpkg" "$CACHE_ROOT/"
         fi
+
+        # 交给 cache action 的文件应属当前用户
+        sudo chown -R "$(id -u):$(id -g)" "$CACHE_ROOT"
+        du -sh "$CACHE_ROOT"/* 2>/dev/null || true
 
     - name: Check space usage
       if: (!cancelled())
