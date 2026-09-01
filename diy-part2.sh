@@ -135,9 +135,9 @@ if [ "$GEOIP_SIZE" -gt 1048576 ] && [ "$GEOSITE_SIZE" -gt 1048576 ]; then
     cp -f "$TMP_GEO_DIR/geosite.dat" files/usr/share/v2ray/
 
     # 注入 /usr/share/geodata 路径（兼容 PassWall / Mihomo 等新版插件）
-    mkdir -p files/usr/share/geodata
-    cp -f "$TMP_GEO_DIR/geoip.dat" files/usr/share/geodata/
-    cp -f "$TMP_GEO_DIR/geosite.dat" files/usr/share/geodata/
+    #mkdir -p files/usr/share/geodata
+    #cp -f "$TMP_GEO_DIR/geoip.dat" files/usr/share/geodata/
+    #cp -f "$TMP_GEO_DIR/geosite.dat" files/usr/share/geodata/
 
     # 关键步骤：拦截 Makefile 中可能重新覆盖 dat 文件的解压/安装指令
     find feeds/ package/ -type f -name "Makefile" -exec grep -l "geodata" {} + 2>/dev/null | while read -r file; do
