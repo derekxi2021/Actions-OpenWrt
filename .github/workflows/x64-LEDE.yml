@@ -215,11 +215,22 @@ jobs:
     - name: Sync Host Tools to Cache Dir
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        mkdir -p /workdir/host_cache
-        # 增加这行：清空/覆盖前先夺回 host_cache 目录的所有权
+        # 1. 创建缓存目录
+        sudo mkdir -p /workdir/host_cache
+        
+        # 2. 递归将整个 host_cache 目录及内部所有文件的所有权切回当前用户 ($USER)
         sudo chown -R $USER:$GROUPS /workdir/host_cache
-        [ -d "/workdir/openwrt/staging_dir/host" ] && cp -ru /workdir/openwrt/staging_dir/host /workdir/host_cache/
-        [ -d "/workdir/openwrt/staging_dir/hostpkg" ] && cp -ru /workdir/openwrt/staging_dir/hostpkg /workdir/host_cache/
+        
+        # 3. 如果 staging_dir 里有文件，复制前也确保它们能被读取，并用 sudo 或直接 cp 进行覆盖
+        if [ -d "/workdir/openwrt/staging_dir/host" ]; then
+          sudo chown -R $USER:$GROUPS /workdir/openwrt/staging_dir/host
+          cp -ru /workdir/openwrt/staging_dir/host /workdir/host_cache/
+        fi
+        
+        if [ -d "/workdir/openwrt/staging_dir/hostpkg" ]; then
+          sudo chown -R $USER:$GROUPS /workdir/openwrt/staging_dir/hostpkg
+          cp -ru /workdir/openwrt/staging_dir/hostpkg /workdir/host_cache/
+        fi
 
     - name: Check space usage
       if: (!cancelled())
