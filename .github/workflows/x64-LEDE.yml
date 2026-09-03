@@ -114,6 +114,16 @@ jobs:
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-ccache-x86-lede-
 
+    # 新增：缓存 Go 构建中间件 (GOCACHE)
+    - name: Cache Go build cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/go-build
+        key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-go-build-${{ github.ref_name }}-
+          ${{ runner.os }}-go-build-
+          
      # 2. Host Tools 远程缓存恢复/保存
     - name: Cache Host Tools
       uses: actions/cache@v4
