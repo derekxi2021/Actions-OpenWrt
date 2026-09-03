@@ -38,7 +38,13 @@ env:
   CCACHE_BASEDIR: /workdir/openwrt
   CCACHE_NOHASHDIR: "true"
   CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
-  
+  # 修复 1：将缓存/打包临时路径重定向至 /workdir 挂载的大容量磁盘分区
+  TMPDIR: /workdir/tmp
+  RUNNER_TEMP: /workdir/tmp
+  # 修复 2：显式声明 Go 缓存与包路径到 /workdir
+  GOCACHE: /workdir/.cache/go-build
+  GOPATH: /workdir/.go
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -51,8 +57,6 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        #sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-        #sudo docker image prune --all --force
         sudo rm -rf /etc/apt/sources.list.d/*
         sudo -E apt-get -qq update
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
@@ -61,6 +65,8 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
+        # 预先创建 Go 缓存目录，防止因路径不存在报 Warning/Skip
+        mkdir -p /workdir/.cache/go-build /workdir/.go
         echo "/usr/lib/ccache" >> $GITHUB_PATH
 
     - name: Maximize build space
@@ -81,28 +87,10 @@ jobs:
         sudo mkdir -p /workdir/tmp
         sudo chmod 1777 /workdir/tmp
         echo "TMPDIR=/workdir/tmp" >> $GITHUB_ENV
+        echo "RUNNER_TEMP=/workdir/tmp" >> $GITHUB_ENV
         
     - name: Checkout
       uses: actions/checkout@v4
-#      with:
-#        fetch-depth: 0
-        
-#    - name: Free Disk Space (Ubuntu)
-#      uses: jlumbroso/free-disk-space@main
-#      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-#        tool-cache: false
-        
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-#        android: true
-#        dotnet: true
-#        haskell: true
-#        large-packages: true
-#        docker-images: true
-#        swap-storage: true
-
 
     # 1. Ccache 远程缓存恢复/保存
     - name: Cache Ccache Files
@@ -114,17 +102,19 @@ jobs:
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-ccache-x86-lede-
 
-    # 新增：缓存 Go 构建中间件 (GOCACHE)
+    # 2. 缓存 Go 构建中间件与依赖包 (修正路径)
     - name: Cache Go build cache
       uses: actions/cache@v4
       with:
-        path: ~/.cache/go-build
+        path: |
+          /workdir/.cache/go-build
+          /workdir/.go/pkg/mod
         key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-go-build-${{ github.ref_name }}-
           ${{ runner.os }}-go-build-
           
-     # 2. Host Tools 远程缓存恢复/保存
+    # 3. Host Tools 远程缓存恢复/保存
     - name: Cache Host Tools
       uses: actions/cache@v4
       with:
@@ -134,7 +124,7 @@ jobs:
           ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-host-x86-lede-
 
-    # 3. 初始化 Ccache 压缩与大小
+    # 4. 初始化 Ccache 压缩与大小
     - name: Init Ccache Config
       run: |
         mkdir -p /workdir/.ccache
@@ -147,7 +137,6 @@ jobs:
       run: |
         df -hT $PWD
         rm -rf openwrt
-        #git clone $REPO_URL -b $REPO_BRANCH openwrt
         git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
         
         # 还原 Host Tools 缓存到 openwrt/staging_dir
@@ -155,10 +144,8 @@ jobs:
           echo "Restoring Host Tools Cache..."
           sudo chown -R "$(id -u):$(id -g)" /workdir/host_cache
           mkdir -p openwrt/staging_dir
-          # 用 -a；不要用可能跳过更新的混乱参数
           [ -d /workdir/host_cache/host ] && cp -a /workdir/host_cache/host openwrt/staging_dir/
           [ -d /workdir/host_cache/hostpkg ] && cp -a /workdir/host_cache/hostpkg openwrt/staging_dir/
-          # 确保可写，后续编译能更新
           chmod -R u+w openwrt/staging_dir/host openwrt/staging_dir/hostpkg 2>/dev/null || true
         fi
 
@@ -212,7 +199,6 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        # 确保 .config 中强制开启 Ccache 开关
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         make defconfig
@@ -224,11 +210,14 @@ jobs:
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
+    # 修复 3：深入清理无用的编译中间文件，彻底避免 Post 阶段磁盘满卡住
     - name: Clean build_dir to free space for cache
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        # 删除极为庞大的目标编译中间目录，仅保留 bin 和 dl
+        echo ">>> 清理编译过程中的临时大文件..."
         rm -rf /workdir/openwrt/build_dir/target-*
+        rm -rf /workdir/openwrt/build_dir/host*
+        rm -rf /workdir/openwrt/staging_dir/target-*
         df -hT
         
     - name: Show Ccache Statistics
@@ -248,7 +237,6 @@ jobs:
         STAGING=/workdir/openwrt/staging_dir
 
         sudo mkdir -p "$CACHE_ROOT"
-        # 清掉旧内容，避免只读/旧属主文件挡 cp
         sudo rm -rf "$CACHE_ROOT/host" "$CACHE_ROOT/hostpkg"
         sudo mkdir -p "$CACHE_ROOT"
 
@@ -261,7 +249,6 @@ jobs:
           sudo cp -a "$STAGING/hostpkg" "$CACHE_ROOT/"
         fi
 
-        # 交给 cache action 的文件应属当前用户
         sudo chown -R "$(id -u):$(id -g)" "$CACHE_ROOT"
         du -sh "$CACHE_ROOT"/* 2>/dev/null || true
 
@@ -286,7 +273,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
