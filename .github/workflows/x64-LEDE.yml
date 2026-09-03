@@ -51,8 +51,9 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-        sudo docker image prune --all --force
+        #sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        #sudo docker image prune --all --force
+        sudo rm -rf /etc/apt/sources.list.d/*
         sudo -E apt-get -qq update
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
@@ -108,20 +109,19 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /workdir/.ccache
-        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
+        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}
+          ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-ccache-x86-lede-
-          ${{ runner.os }}-openwrt-ccache-
 
      # 2. Host Tools 远程缓存恢复/保存
     - name: Cache Host Tools
       uses: actions/cache@v4
       with:
         path: /workdir/host_cache
-        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}
+        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}
+          ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-host-x86-lede-
 
     # 3. 初始化 Ccache 压缩与大小
@@ -137,7 +137,8 @@ jobs:
       run: |
         df -hT $PWD
         rm -rf openwrt
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        #git clone $REPO_URL -b $REPO_BRANCH openwrt
+        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
         
         # 还原 Host Tools 缓存到 openwrt/staging_dir
         if [ -d "/workdir/host_cache/host" ] || [ -d "/workdir/host_cache/hostpkg" ]; then
@@ -174,6 +175,14 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
+    - name: Cache DL Directory
+      uses: actions/cache@v4
+      with:
+        path: /workdir/openwrt/dl
+        key: ${{ runner.os }}-openwrt-dl-${{ hashFiles('openwrt/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-dl-
+          
     - name: Download package
       id: package
       run: |
