@@ -24,6 +24,15 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #sed -i 's/KERNEL_PATCHVER:=*.*/KERNEL_PATCHVER:=6.1/g' target/linux/x86/Makefile
 #sed -i 's/KERNEL_TESTING_PATCHVER:=*.*/KERNEL_TESTING_PATCHVER:=6.1/g' target/linux/x86/Makefile
 
+# Pin passwall feeds to commits matching AN7581 build (2026-09-25),
+# so passwall2 config format stays compatible between x64 and AN7581.
+# NOTE: feeds.conf.default cannot pin a commit hash directly (the feeds
+# script treats ";rev" as a branch name), so checkout after feeds update.
+# To upgrade passwall2 later, update both hashes here AND the matching
+# pins in the ponwrt repo together, then rebuild both.
+git -C feeds/passwall2 checkout -q ab1e812ec57ac7be0e213532f60ef4c46e76d962
+git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595250
+
 # set golang 1.26.x （rc/beta）
 rm -rf feeds/packages/lang/golang
 git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
