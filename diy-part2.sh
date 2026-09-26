@@ -28,10 +28,17 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 # so passwall2 config format stays compatible between x64 and AN7581.
 # NOTE: feeds.conf.default cannot pin a commit hash directly (the feeds
 # script treats ";rev" as a branch name), so checkout after feeds update.
+# `scripts/feeds install -a` already ran before this script, so re-install
+# these two feeds to pick up the pinned versions (otherwise the old installed
+# copies under package/feeds/ would still be used).
 # To upgrade passwall2 later, update both hashes here AND the matching
 # pins in the ponwrt repo together, then rebuild both.
-git -C feeds/passwall2 checkout -q ab1e812ec57ac7be0e213532f60ef4c46e76d962
-git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595250
+echo ">>> Pinning passwall2 feed..."
+git -C feeds/passwall2 checkout -q ab1e812ec57ac7be0e213532f60ef4c46e76d962 || { echo ">>> [ERROR] passwall2 pin failed!"; exit 1; }
+git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595250 || { echo ">>> [ERROR] passwall_packages pin failed!"; exit 1; }
+./scripts/feeds install -f -a -p passwall2
+./scripts/feeds install -f -a -p passwall_packages
+echo ">>> Passwall feeds pinned."
 
 # set golang 1.26.x （rc/beta）
 rm -rf feeds/packages/lang/golang
