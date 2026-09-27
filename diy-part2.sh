@@ -24,6 +24,12 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #sed -i 's/KERNEL_PATCHVER:=*.*/KERNEL_PATCHVER:=6.1/g' target/linux/x86/Makefile
 #sed -i 's/KERNEL_TESTING_PATCHVER:=*.*/KERNEL_TESTING_PATCHVER:=6.1/g' target/linux/x86/Makefile
 
+# Remove passwall2 shadowed by helloworld feed (kenzok8/small ships an old
+# luci-app-passwall2 25.8.22 and is listed before the passwall2 feed in
+# feeds.conf.default, so `feeds install -a` picks the old one. Delete it so
+# the passwall2 feed's pinned version wins.
+rm -rf feeds/helloworld/luci-app-passwall2 feeds/helloworld/luci-app-passwall
+
 # Pin passwall feeds to commits matching AN7581 build (2026-09-25),
 # so passwall2 config format stays compatible between x64 and AN7581.
 # NOTE: feeds.conf.default cannot pin a commit hash directly (the feeds
