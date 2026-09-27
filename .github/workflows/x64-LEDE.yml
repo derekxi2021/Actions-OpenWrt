@@ -201,7 +201,7 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        sed -i '/CONFIG_CCACHE/d' .config
+        sed -i '/^CONFIG_CCACHE=/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         make defconfig
         
