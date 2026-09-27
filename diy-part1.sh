@@ -28,8 +28,8 @@ echo 'src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-pass
 echo 'src-git passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2' >>feeds.conf.default
 #echo 'src-git gecoosac https://github.com/lwb1978/openwrt-gecoosac' >>feeds.conf.default
 #echo 'src-git oaf https://github.com/destan19/OpenAppFilter' >>feeds.conf.default
-echo 'src-git lucky https://github.com/sirpdboy/luci-app-lucky' >>feeds.conf.default
-echo 'src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki' >>feeds.conf.default
+#echo 'src-git lucky https://github.com/sirpdboy/luci-app-lucky' >>feeds.conf.default
+#echo 'src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki' >>feeds.conf.default
 
 # 添加 OpenClash 源码
 sed -i '$a src-git openclash https://github.com/vernesong/OpenClash.git' feeds.conf.default
