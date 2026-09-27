@@ -79,8 +79,8 @@ sed -i '/CONFIG_CCACHE_DIR/d' .config
 echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
 
 # set golang 1.26.x （rc/beta）
-rm -rf feeds/packages/lang/golang
-git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
+#rm -rf feeds/packages/lang/golang
+#git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 
 # set golang 1.25.x
 #rm -rf feeds/packages/lang/golang
