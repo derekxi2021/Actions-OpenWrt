@@ -40,6 +40,14 @@ git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595
 ./scripts/feeds install -f -a -p passwall_packages
 echo ">>> Passwall feeds pinned."
 
+# Fix ccache dir: OpenWrt exports CCACHE_DIR=$(CONFIG_CCACHE_DIR) during build,
+# and an empty CONFIG_CCACHE_DIR overrides the workflow's CCACHE_DIR env var,
+# causing ccache to write to ~/.ccache (which actions/cache does not persist).
+# Point it at the workflow's cache path (/workdir/.ccache) instead.
+# Kept here (not in x64-LEDE.config) because /workdir is runner-specific.
+sed -i '/CONFIG_CCACHE_DIR/d' .config
+echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
+
 # set golang 1.26.x （rc/beta）
 rm -rf feeds/packages/lang/golang
 git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
