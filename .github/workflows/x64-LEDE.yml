@@ -44,7 +44,6 @@ env:
   TMPDIR: /workdir/tmp
   RUNNER_TEMP: /workdir/tmp
   # 修复 2：显式声明 Go 缓存与包路径到 /workdir
-  GOCACHE: /workdir/.cache/go-build
   GOPATH: /workdir/.go
 
 jobs:
@@ -109,8 +108,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: |
-          /workdir/.cache/go-build
-          /workdir/.go/pkg/mod
+           /workdir/openwrt/tmp/go-build
+           /workdir/openwrt/dl/go-mod-cache
         key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-go-build-${{ github.ref_name }}-
