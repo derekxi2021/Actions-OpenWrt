@@ -48,6 +48,24 @@ rm -rf package/feeds/helloworld/luci-app-passwall2 package/feeds/helloworld/luci
 echo ">>> Pinning passwall2 feed..."
 git -C feeds/passwall2 checkout -q ab1e812ec57ac7be0e213532f60ef4c46e76d962 || { echo ">>> [ERROR] passwall2 pin failed!"; exit 1; }
 git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595250 || { echo ">>> [ERROR] passwall_packages pin failed!"; exit 1; }
+
+# === 2026-09-27: passwall2 DNS 黑洞修复（x64 26.9.16 实测）===
+# 1. 删 packages feed 的 xray-core 26.6.1，避免遮挡 passwall_packages 的 26.9.9
+echo ">>> Removing shadowed xray-core from packages feed..."
+rm -rf feeds/packages/net/xray-core
+
+# 2. dns-in: tunnel -> dokodemo-door
+#    26.9.16 源码 bug：tunnel 不懂 DNS 协议，查询包黑洞；
+#    dokodemo-door 是 xray 专用 DNS 入口。协议写死在源码，无 UCI 配置项，只能改源码。
+UTIL_XRAY=$(find feeds/passwall2 -name "util_xray.lua" 2>/dev/null | head -1)
+[ -z "$UTIL_XRAY" ] && { echo ">>> [ERROR] util_xray.lua not found!"; exit 1; }
+DNSIN_LINE=$(grep -n 'tag = "dns-in"' "$UTIL_XRAY" | head -1 | cut -d: -f1)
+[ -z "$DNSIN_LINE" ] && { echo ">>> [ERROR] dns-in tag not found!"; exit 1; }
+sed -i "$((DNSIN_LINE-5)),${DNSIN_LINE}s/protocol = \"tunnel\"/protocol = \"dokodemo-door\"/" "$UTIL_XRAY"
+echo ">>> Verify dns-in protocol:"
+grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
+
+
 ./scripts/feeds install -f -a -p passwall2
 ./scripts/feeds install -f -a -p passwall_packages
 echo ">>> Passwall feeds pinned."
