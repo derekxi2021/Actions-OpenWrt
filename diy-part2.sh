@@ -29,6 +29,7 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 # feeds.conf.default, so `feeds install -a` picks the old one. Delete it so
 # the passwall2 feed's pinned version wins.
 rm -rf feeds/helloworld/luci-app-passwall2 feeds/helloworld/luci-app-passwall
+rm -rf package/feeds/helloworld/luci-app-passwall2 package/feeds/helloworld/luci-app-passwall
 
 # Pin passwall feeds to commits matching AN7581 build (2026-09-25),
 # so passwall2 config format stays compatible between x64 and AN7581.
