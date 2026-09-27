@@ -24,6 +24,11 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #sed -i 's/KERNEL_PATCHVER:=*.*/KERNEL_PATCHVER:=6.1/g' target/linux/x86/Makefile
 #sed -i 's/KERNEL_TESTING_PATCHVER:=*.*/KERNEL_TESTING_PATCHVER:=6.1/g' target/linux/x86/Makefile
 
+# luci feed (coolsnowwolf/luci) also ships luci-app-passwall2 25.8.22
+# and is listed before helloworld/passwall2 in feeds.conf.default
+rm -rf feeds/luci/applications/luci-app-passwall2 feeds/luci/applications/luci-app-passwall
+rm -rf package/feeds/luci/luci-app-passwall2 package/feeds/luci/luci-app-passwall
+
 # Remove passwall2 shadowed by helloworld feed (kenzok8/small ships an old
 # luci-app-passwall2 25.8.22 and is listed before the passwall2 feed in
 # feeds.conf.default, so `feeds install -a` picks the old one. Delete it so
