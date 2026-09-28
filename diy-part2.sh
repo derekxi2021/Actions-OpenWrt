@@ -20,7 +20,7 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 #sed -i 's/OpenWrt/P3TERX-Router/g' package/base-files/files/bin/config_generate
 
 # Modify Kernel version
-#sed -i 's/CONFIG_LINUX.*/CONFIG_LINUX_6_1=y/g'.config
+#sed -i 's/CONFIG_LINUX.*/CONFIG_LINUX_6_1=y/g' .config
 #sed -i 's/KERNEL_PATCHVER:=*.*/KERNEL_PATCHVER:=6.1/g' target/linux/x86/Makefile
 #sed -i 's/KERNEL_TESTING_PATCHVER:=*.*/KERNEL_TESTING_PATCHVER:=6.1/g' target/linux/x86/Makefile
 
@@ -43,14 +43,15 @@ git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595
 # 让 passwall_packages 的新版透出来（xray-core 26.9.9 / geo 2026-09-24）
 echo ">>> Removing shadowed xray-core and v2ray-geodata from packages feed..."
 rm -rf feeds/packages/net/xray-core
+rm -rf package/feeds/packages/xray-core
 rm -rf feeds/packages/net/v2ray-geodata
 rm -rf package/feeds/packages/v2ray-geodata
 
 # 2. dns-in: tunnel -> dokodemo-door（26.9.16 源码 bug，无 UCI 项，只能改源码）
 UTIL_XRAY=$(find feeds/passwall2 -name "util_xray.lua" 2>/dev/null | head -1)
-[ -z "$UTIL_XRAY"] && { echo ">>> [ERROR] util_xray.lua not found!"; exit 1;}
+[ -z "$UTIL_XRAY" ] && { echo ">>> [ERROR] util_xray.lua not found!"; exit 1;}
 DNSIN_LINE=$(grep -n 'tag = "dns-in"' "$UTIL_XRAY" | head -1 | cut -d: -f1)
-[ -z "$DNSIN_LINE"] && { echo ">>> [ERROR] dns-in tag not found!"; exit 1;}
+[ -z "$DNSIN_LINE" ] && { echo ">>> [ERROR] dns-in tag not found!"; exit 1;}
 sed -i "$((DNSIN_LINE-5)),${DNSIN_LINE}s/protocol = \"tunnel\"/protocol = \"dokodemo-door\"/" "$UTIL_XRAY"
 echo ">>> Verify dns-in protocol:"
 grep -B5 'tag = "dns-in"' "$UTIL_XRAY" | grep -q 'protocol = "dokodemo-door"' \
@@ -63,8 +64,8 @@ grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 echo ">>> Passwall feeds pinned."
 
 # ccache 目录放这里，不进.config（/workdir 是 runner 相关路径）
-sed -i '/CONFIG_CCACHE_DIR/d'.config
-echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >>.config
+sed -i '/CONFIG_CCACHE_DIR/d' .config
+echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
 
 # set golang 1.26.x （rc/beta）
 #rm -rf feeds/packages/lang/golang
@@ -84,7 +85,7 @@ echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >>.config
 
 # fixed rust host build download llvm in ci error
 #sed -i 's/--set=llvm\.download-ci-llvm=false/--set=llvm.download-ci-llvm=true/' feeds/packages/lang/rust/Makefile
-#grep -q -- '--ci false \\' feeds/packages/lang/rust/Makefile || sed -i '/x\.py \\/a \ --ci false \\' feeds/packages/lang/rust/Makefile
+#grep -q -- '--ci false \\' feeds/packages/lang/rust/Makefile || sed -i '/x\.py \\/a \        --ci false \\' feeds/packages/lang/rust/Makefile
 
 # Remove dns2socks-rust & v2raya
 #rm -rfv feeds/helloworld/dns2socks-rust
@@ -130,14 +131,14 @@ echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >>.config
 #rm -rf package/feeds/kenzo/xray-plugin/
 
 # 3. 强行关掉.config 里的这哥俩，确保编译器不会惯性寻找
-#if [ -f.config]; then
-# sed -i '/CONFIG_PACKAGE_v2ray-plugin/d'.config
-# sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d'.config
-# sed -i '/CONFIG_PACKAGE_xray-plugin/d'.config
+#if [ -f .config ]; then
+#    sed -i '/CONFIG_PACKAGE_v2ray-plugin/d' .config
+#    sed -i '/CONFIG_PACKAGE_luci-app-v2ray-plugin/d' .config
+#    sed -i '/CONFIG_PACKAGE_xray-plugin/d' .config
 #
-# echo "CONFIG_PACKAGE_v2ray-plugin=n" >>.config
-# echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >>.config
-# echo "CONFIG_PACKAGE_xray-plugin=n" >>.config
+#    echo "CONFIG_PACKAGE_v2ray-plugin=n" >> .config
+#    echo "CONFIG_PACKAGE_luci-app-v2ray-plugin=n" >> .config
+#    echo "CONFIG_PACKAGE_xray-plugin=n" >> .config
 #fi
 
 # =========================================================
@@ -151,14 +152,14 @@ rm -rf package/feeds/luci/luci-app-fchomo
 rm -rf package/feeds/packages/mihomo
 rm -rf package/feeds/packages/nikki
 #.config 里残留的选中项也要清掉，否则 defconfig 报错
-sed -i '/CONFIG_PACKAGE_luci-app-fchomo/d'.config
-sed -i '/CONFIG_PACKAGE_mihomo/d'.config
-sed -i '/CONFIG_PACKAGE_luci-app-nikki/d'.config
-sed -i '/CONFIG_PACKAGE_nikki/d'.config
+sed -i '/CONFIG_PACKAGE_luci-app-fchomo/d' .config
+sed -i '/CONFIG_PACKAGE_mihomo/d' .config
+sed -i '/CONFIG_PACKAGE_luci-app-nikki/d' .config
+sed -i '/CONFIG_PACKAGE_nikki/d' .config
 
 # 修复 gettext-full 0.24.2 的 BISON_LOCALEDIR 缺失 Bug
 GETTEXT_MAKEFILE="package/libs/gettext-full/Makefile"
-if [ -f "$GETTEXT_MAKEFILE"]; then
+if [ -f "$GETTEXT_MAKEFILE" ]; then
 echo 'HOST_CFLAGS += -DBISON_LOCALEDIR=\"/usr/share/locale\"' >> $GETTEXT_MAKEFILE
 echo 'HOST_CPPFLAGS += -DBISON_LOCALEDIR=\"/usr/share/locale\"' >> $GETTEXT_MAKEFILE
 fi
