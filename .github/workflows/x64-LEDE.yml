@@ -48,6 +48,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    # 实测构建约 108 分钟; 挂住时早失败, 不用等 GitHub 默认的 6 小时
+    timeout-minutes: 300
     permissions:
       contents: write
       actions: write
@@ -59,14 +61,15 @@ jobs:
       run: |
         sudo rm -rf /etc/apt/sources.list.d/*
         sudo -E apt-get -qq update
-        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-        # 预先创建 Go 相关目录, 防止缓存步骤因路径不存在报 Warning/Skip
-        mkdir -p /workdir/.cache/go-build /workdir/.go
+        # 预先创建 GOPATH 兜底目录, 防止漏网的 go 调用写到根分区。
+        # Go 构建缓存走 openwrt/tmp/go-build, 由 Restore Go build cache 步骤在 Clone 之后还原, 不在这里建。
+        mkdir -p /workdir/.go
         echo "/usr/lib/ccache" >> $GITHUB_PATH
 
     - name: Maximize build space
@@ -82,11 +85,9 @@ jobs:
         remove-docker-images: 'true'
         build-mount-path: '/workdir'
 
-    # 新增: maximize 之后再深度清理一次根分区, 并留下 du 基线。
+    # 新增: maximize 之后再深度清理一次根分区, 并留下 df 基线。
     # 背景: 曾实测根分区 99% (146G 用了 144G) 而 /workdir 仅 18%,
     # actions/cache 在 Post 阶段把 tarball staging 到根分区导致 No space left on device。
-    # 144G 远超 tarball 体量, 说明根分区很可能从 maximize 之后就没干净过,
-    # 这步的 du 基线让下次一眼看出大户是谁。
     - name: Deep clean rootfs and baseline disk usage
       run: |
         echo ">>> 深度清理根分区残留..."
@@ -103,10 +104,8 @@ jobs:
         sudo swapon /workdir/swapfile
         echo ">>> df 基线:"
         df -hT
-        echo ">>> / 下最大的 15 个目录 (基线, 供事后对比):"
-        sudo du -sh /* 2>/dev/null | sort -rh | head -15
-        echo ">>> 可疑大户: /mnt 和 /opt (maximize 号称删掉的组件可能没删干净):"
-        sudo du -sh /mnt/* /opt/* 2>/dev/null | sort -rh | head -10
+        # 2026-09-28 已采集过一轮基线 (/usr 27G、/opt 7.5G、/mnt 7.6G、僵尸 /swapfile 3.1G),
+        # du 全盘扫描太贵 (数分钟), 不再每次跑。异常时靠下面的 fail-fast 断言拦截。
         echo ">>> 根分区可用空间断言 (不足 2G 直接失败, 省得 2 小时后失联):"
         ROOT_AVAIL_MB=$(df -m / | awk 'NR==2{print $4}')
         echo "root avail: ${ROOT_AVAIL_MB}M"
@@ -117,12 +116,11 @@ jobs:
     - name: Set cache week bucket
       run: echo "CACHE_WEEK=$(date +%Y-W%V)" >> $GITHUB_ENV
 
+    # TMPDIR/RUNNER_TEMP 已在顶层 env 指向 /workdir/tmp (对所有步骤生效), 这里只负责建目录。
     - name: Redirect TMPDIR to workdir
       run: |
         sudo mkdir -p /workdir/tmp
         sudo chmod 1777 /workdir/tmp
-        echo "TMPDIR=/workdir/tmp" >> $GITHUB_ENV
-        echo "RUNNER_TEMP=/workdir/tmp" >> $GITHUB_ENV
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -140,18 +138,6 @@ jobs:
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-ccache-x86-lede-
 
-    - name: Restore Go build cache
-      id: restore-go
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          /workdir/openwrt/tmp/go-build
-          /workdir/openwrt/dl/go-mod-cache
-        key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
-        restore-keys: |
-          ${{ runner.os }}-go-build-${{ github.ref_name }}-
-          ${{ runner.os }}-go-build-
-
     - name: Restore Host Tools
       id: restore-host
       uses: actions/cache/restore@v4
@@ -166,7 +152,6 @@ jobs:
       run: |
         mkdir -p /workdir/.ccache
         ccache -M "$CCACHE_MAXSIZE"
-        ccache -o compression=true
         ccache -z
 
     - name: Clone source code
@@ -187,6 +172,20 @@ jobs:
         fi
 
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    # 必须放在 Clone source code 之后: 还原路径在 openwrt/ 目录内,
+    # 而 Clone 开头 rm -rf openwrt。放前面等于白还原 —— 之前 1.8G 的 Go 缓存一直"只存不用"。
+    - name: Restore Go build cache
+      id: restore-go
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          /workdir/openwrt/tmp/go-build
+          /workdir/openwrt/dl/go-mod-cache
+        key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
+        restore-keys: |
+          ${{ runner.os }}-go-build-${{ github.ref_name }}-
+          ${{ runner.os }}-go-build-
 
     - name: Load custom feeds
       run: |
@@ -215,8 +214,8 @@ jobs:
         cd openwrt
         make defconfig
         make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+        # 列出并删除下载失败的残片 (小于 1024 字节的基本都是坏包)
+        find dl -size -1024c -print -delete
 
     - name: Clean gettext-full host cache
       run: |
@@ -252,9 +251,6 @@ jobs:
     - name: Analyze build performance
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        echo "================ Top 15 largest build dirs ================"
-        du -sh /workdir/openwrt/build_dir/target-*/* 2>/dev/null | sort -rh | head -15
-        echo ""
         echo "================ Cache candidate sizes ================"
         du -sh /workdir/.ccache 2>/dev/null || echo "ccache: MISSING"
         du -sh /workdir/openwrt/tmp/go-build 2>/dev/null || echo "go-build: MISSING"
@@ -329,11 +325,7 @@ jobs:
         # tmp 下只保留 go-build (编译完成后其余无用)
         find /workdir/openwrt/tmp -mindepth 1 -maxdepth 1 ! -name 'go-build' -exec rm -rf {} + 2>/dev/null || true
         df -hT
-        echo ">>> 三个缓存源目录实际大小"
-        echo "    (若 go 相关很小, 说明 LEDE 的真实 Go 缓存不在这俩路径, 把输出贴出来再调):"
-        du -sh /workdir/.ccache /workdir/openwrt/tmp/go-build /workdir/openwrt/dl/go-mod-cache 2>&1
-        echo ">>> staging_dir/host* 大小 (即将 move 进 host_cache):"
-        du -sh /workdir/openwrt/staging_dir/host /workdir/openwrt/staging_dir/hostpkg 2>&1 || true
+        # .ccache / go-build / go-mod-cache / staging_dir/host* 的大小已由 Analyze 步骤上报, 这里不重复。
         echo ">>> 可疑: 家目录下的 Go 默认缓存 (若很大, 说明构建没走上面指定的路径):"
         du -sh /home/runner/.cache/go-build /home/runner/go 2>&1 || true
 
@@ -403,7 +395,6 @@ jobs:
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
-        [ -n "${{ steps.gofile.outputs.url }}" ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
@@ -434,10 +425,7 @@ jobs:
     # 新增: save 前最后的磁盘报告, 紧邻 save 步骤, 出问题时一眼定位
     - name: Final disk report before cache save
       if: (!cancelled())
-      run: |
-        df -hT
-        echo ">>> /workdir 明细:"
-        du -sh /workdir/* 2>/dev/null | sort -rh
+      run: df -hT
 
     # 显式 save: 只在编译成功且本周 key 未命中时执行。
     # 本周已命中则跳过, 不再重复打包上传。
