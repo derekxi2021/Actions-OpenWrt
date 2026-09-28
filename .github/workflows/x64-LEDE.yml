@@ -38,12 +38,11 @@ env:
   CCACHE_BASEDIR: /workdir/openwrt
   CCACHE_NOHASHDIR: "true"
   CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime,file_stat_matches,pch_defines
-  CCACHE_MAXSIZE: 3G
+  CCACHE_MAXSIZE: 5G
   CCACHE_COMPRESS: "true"
-  # 修复 1：将缓存/打包临时路径重定向至 /workdir 挂载的大容量磁盘分区
+  # 构建期的临时文件全部走 /workdir 大分区, 不挤占根分区
   TMPDIR: /workdir/tmp
   RUNNER_TEMP: /workdir/tmp
-  # 修复 2：显式声明 Go 缓存与包路径到 /workdir
   GOPATH: /workdir/.go
 
 jobs:
@@ -52,7 +51,7 @@ jobs:
     permissions:
       contents: write
       actions: write
-      
+
     steps:
     - name: Initialization environment
       env:
@@ -66,7 +65,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-        # 预先创建 Go 缓存目录，防止因路径不存在报 Warning/Skip
+        # 预先创建 Go 相关目录, 防止缓存步骤因路径不存在报 Warning/Skip
         mkdir -p /workdir/.cache/go-build /workdir/.go
         echo "/usr/lib/ccache" >> $GITHUB_PATH
 
@@ -83,63 +82,86 @@ jobs:
         remove-docker-images: 'true'
         build-mount-path: '/workdir'
 
+    # 新增: maximize 之后再深度清理一次根分区, 并留下 du 基线。
+    # 背景: 曾实测根分区 99% (146G 用了 144G) 而 /workdir 仅 18%,
+    # actions/cache 在 Post 阶段把 tarball staging 到根分区导致 No space left on device。
+    # 144G 远超 tarball 体量, 说明根分区很可能从 maximize 之后就没干净过,
+    # 这步的 du 基线让下次一眼看出大户是谁。
+    - name: Deep clean rootfs and baseline disk usage
+      run: |
+        echo ">>> 深度清理根分区残留..."
+        sudo docker system prune -af 2>/dev/null || true
+        sudo rm -rf /home/runner/.cache /root/.cache 2>/dev/null || true
+        sudo -E apt-get -qq clean
+        echo ">>> df 基线:"
+        df -hT
+        echo ">>> / 下最大的 15 个目录 (基线, 供事后对比):"
+        sudo du -sh /* 2>/dev/null | sort -rh | head -15
+
+    # 缓存按自然周分桶 (如 2026-W39), 配合下面的 restore/save 分离:
+    # 同一周内命中则跳过 save, 避免每次跑都打包上传数 GB 的 tarball。
+    - name: Set cache week bucket
+      run: echo "CACHE_WEEK=$(date +%Y-W%V)" >> $GITHUB_ENV
+
     - name: Redirect TMPDIR to workdir
       run: |
         sudo mkdir -p /workdir/tmp
         sudo chmod 1777 /workdir/tmp
         echo "TMPDIR=/workdir/tmp" >> $GITHUB_ENV
         echo "RUNNER_TEMP=/workdir/tmp" >> $GITHUB_ENV
-        
+
     - name: Checkout
       uses: actions/checkout@v4
 
-    # 1. Ccache 远程缓存恢复/保存
-    - name: Cache Ccache Files
-      uses: actions/cache@v4
+    # 缓存改为显式 restore + save 分离 (原来 actions/cache@v4 隐式 save, 每次跑必打包):
+    # - 本周 key 命中则后续 save 直接跳过: 省掉数 GB 打包上传时间, 也避开根分区 staging
+    # - save 只在编译成功且本周未命中时执行: 失败构建不上传残次缓存
+    - name: Restore Ccache
+      id: restore-ccache
+      uses: actions/cache/restore@v4
       with:
         path: /workdir/.ccache
-        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-${{ github.sha }}
+        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
         restore-keys: |
           ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-ccache-x86-lede-
 
-    # 2. 缓存 Go 构建中间件与依赖包 (修正路径)
-    - name: Cache Go build cache
-      uses: actions/cache@v4
+    - name: Restore Go build cache
+      id: restore-go
+      uses: actions/cache/restore@v4
       with:
         path: |
-           /workdir/openwrt/tmp/go-build
-           /workdir/openwrt/dl/go-mod-cache
-        key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ github.sha }}
+          /workdir/openwrt/tmp/go-build
+          /workdir/openwrt/dl/go-mod-cache
+        key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
         restore-keys: |
           ${{ runner.os }}-go-build-${{ github.ref_name }}-
           ${{ runner.os }}-go-build-
-          
-    # 3. Host Tools 远程缓存恢复/保存
-    - name: Cache Host Tools
-      uses: actions/cache@v4
+
+    - name: Restore Host Tools
+      id: restore-host
+      uses: actions/cache/restore@v4
       with:
         path: /workdir/host_cache
-        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-${{ github.sha }}
+        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
         restore-keys: |
           ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-
           ${{ runner.os }}-openwrt-host-x86-lede-
 
-    # 4. 初始化 Ccache 压缩与大小
     - name: Init Ccache Config
       run: |
         mkdir -p /workdir/.ccache
-        ccache -M 5G
+        ccache -M "$CCACHE_MAXSIZE"
         ccache -o compression=true
         ccache -z
-          
+
     - name: Clone source code
       working-directory: /workdir
       run: |
         df -hT $PWD
         rm -rf openwrt
         git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
-        
+
         # 还原 Host Tools 缓存到 openwrt/staging_dir
         if [ -d "/workdir/host_cache/host" ] || [ -d "/workdir/host_cache/hostpkg" ]; then
           echo "Restoring Host Tools Cache..."
@@ -151,7 +173,7 @@ jobs:
         fi
 
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        
+
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
@@ -172,7 +194,7 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
-          
+
     - name: Download package
       id: package
       run: |
@@ -187,7 +209,7 @@ jobs:
         rm -rf /workdir/openwrt/build_dir/hostpkg/gettext-*
         rm -rf /workdir/openwrt/staging_dir/hostpkg/bin/msgfmt
         rm -rf /workdir/host_cache/hostpkg/bin/msgfmt 2>/dev/null || true
-        
+
     - name: Compile the firmware
       id: compile
       run: |
@@ -195,7 +217,7 @@ jobs:
         sed -i '/^CONFIG_CCACHE=/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         make defconfig
-        
+
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
@@ -203,16 +225,23 @@ jobs:
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    # 修复 3：深入清理无用的编译中间文件，彻底避免 Post 阶段磁盘满卡住
-    - name: Clean build_dir to free space for cache
+    - name: Clean build tree to free space
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        echo ">>> 清理编译过程中的临时大文件..."
+        echo ">>> 清理编译中间产物..."
         rm -rf /workdir/openwrt/build_dir/target-*
         rm -rf /workdir/openwrt/build_dir/host*
-        rm -rf /workdir/openwrt/staging_dir/target-*
+        # tmp 下只保留 go-build (编译完成后其余无用)
+        find /workdir/openwrt/tmp -mindepth 1 -maxdepth 1 ! -name 'go-build' -exec rm -rf {} + 2>/dev/null || true
         df -hT
-        
+        echo ">>> 三个缓存源目录实际大小"
+        echo "    (若 go 相关很小, 说明 LEDE 的真实 Go 缓存不在这俩路径, 把输出贴出来再调):"
+        du -sh /workdir/.ccache /workdir/openwrt/tmp/go-build /workdir/openwrt/dl/go-mod-cache 2>&1
+        echo ">>> staging_dir/host* 大小 (即将 move 进 host_cache):"
+        du -sh /workdir/openwrt/staging_dir/host /workdir/openwrt/staging_dir/hostpkg 2>&1 || true
+        echo ">>> 可疑: 家目录下的 Go 默认缓存 (若很大, 说明构建没走上面指定的路径):"
+        du -sh /home/runner/.cache/go-build /home/runner/go 2>&1 || true
+
     - name: Show Ccache Statistics
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
@@ -222,8 +251,10 @@ jobs:
         ccache -s
         echo "=========================================="
 
+    # 关键修改: cp -a 改为 mv。编译成功后 staging_dir/host 后续步骤已无用,
+    # move 过去不双倍占用磁盘。且仅在本次需要 save 时才执行。
     - name: Sync Host Tools to Cache Dir
-      if: steps.compile.outputs.status == 'success' && !cancelled()
+      if: steps.compile.outputs.status == 'success' && steps.restore-host.outputs.cache-hit != 'true' && !cancelled()
       run: |
         set -e
         CACHE_ROOT=/workdir/host_cache
@@ -231,15 +262,14 @@ jobs:
 
         sudo mkdir -p "$CACHE_ROOT"
         sudo rm -rf "$CACHE_ROOT/host" "$CACHE_ROOT/hostpkg"
-        sudo mkdir -p "$CACHE_ROOT"
 
         if [ -d "$STAGING/host" ]; then
-          echo "Caching staging_dir/host ..."
-          sudo cp -a "$STAGING/host" "$CACHE_ROOT/"
+          echo "Moving staging_dir/host to cache (mv, 不双倍占用磁盘)..."
+          sudo mv "$STAGING/host" "$CACHE_ROOT/"
         fi
         if [ -d "$STAGING/hostpkg" ]; then
-          echo "Caching staging_dir/hostpkg ..."
-          sudo cp -a "$STAGING/hostpkg" "$CACHE_ROOT/"
+          echo "Moving staging_dir/hostpkg to cache ..."
+          sudo mv "$STAGING/hostpkg" "$CACHE_ROOT/"
         fi
 
         sudo chown -R "$(id -u):$(id -g)" "$CACHE_ROOT"
@@ -305,3 +335,36 @@ jobs:
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # 新增: save 前最后的磁盘报告, 紧邻 save 步骤, 出问题时一眼定位
+    - name: Final disk report before cache save
+      if: (!cancelled())
+      run: |
+        df -hT
+        echo ">>> /workdir 明细:"
+        du -sh /workdir/* 2>/dev/null | sort -rh
+
+    # 显式 save: 只在编译成功且本周 key 未命中时执行。
+    # 本周已命中则跳过, 不再重复打包上传。
+    - name: Save Ccache
+      if: steps.compile.outputs.status == 'success' && steps.restore-ccache.outputs.cache-hit != 'true' && !cancelled()
+      uses: actions/cache/save@v4
+      with:
+        path: /workdir/.ccache
+        key: ${{ runner.os }}-openwrt-ccache-x86-lede-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
+
+    - name: Save Go build cache
+      if: steps.compile.outputs.status == 'success' && steps.restore-go.outputs.cache-hit != 'true' && !cancelled()
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          /workdir/openwrt/tmp/go-build
+          /workdir/openwrt/dl/go-mod-cache
+        key: ${{ runner.os }}-go-build-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
+
+    - name: Save Host Tools
+      if: steps.compile.outputs.status == 'success' && steps.restore-host.outputs.cache-hit != 'true' && !cancelled()
+      uses: actions/cache/save@v4
+      with:
+        path: /workdir/host_cache
+        key: ${{ runner.os }}-openwrt-host-x86-lede-${{ github.ref_name }}-${{ env.CACHE_WEEK }}
