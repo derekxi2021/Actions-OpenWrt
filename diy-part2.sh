@@ -42,10 +42,23 @@ git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595
 # 1. 删 packages feed 的旧 xray-core（26.6.1）和旧 v2ray-geodata（2025-06），
 # 让 passwall_packages 的新版透出来（xray-core 26.9.9 / geo 2026-09-24）
 echo ">>> Removing shadowed xray-core and v2ray-geodata from packages feed..."
+# xray-core 路径已知，直接删
 rm -rf feeds/packages/net/xray-core
 rm -rf package/feeds/packages/xray-core
-rm -rf feeds/packages/net/v2ray-geodata
+# v2ray-geodata 路径不确定，find 出来再删
+V2RAY_GEO_DIR=$(find feeds/packages -type d -name "v2ray-geodata" 2>/dev/null | head -1)
+if [ -n "$V2RAY_GEO_DIR" ]; then
+  echo ">>> Found v2ray-geodata at $V2RAY_GEO_DIR, removing..."
+  rm -rf "$V2RAY_GEO_DIR"
+else
+  echo ">>> [WARN] v2ray-geodata not found in packages feed!"
+fi
 rm -rf package/feeds/packages/v2ray-geodata
+# 验证删干净了
+find feeds/packages -type d -name "v2ray-geodata" 2>/dev/null | grep -q . \
+  && { echo ">>> [ERROR] v2ray-geodata still exists in packages feed!"; exit 1; } \
+  || echo ">>> v2ray-geodata removed from packages feed."
+
 
 # 2. dns-in: tunnel -> dokodemo-door（26.9.16 源码 bug，无 UCI 项，只能改源码）
 UTIL_XRAY=$(find feeds/passwall2 -name "util_xray.lua" 2>/dev/null | head -1)
