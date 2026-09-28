@@ -63,6 +63,8 @@ DNSIN_LINE=$(grep -n 'tag = "dns-in"' "$UTIL_XRAY" | head -1 | cut -d: -f1)
 [ -z "$DNSIN_LINE" ] && { echo ">>> [ERROR] dns-in tag not found!"; exit 1; }
 sed -i "$((DNSIN_LINE-5)),${DNSIN_LINE}s/protocol = \"tunnel\"/protocol = \"dokodemo-door\"/" "$UTIL_XRAY"
 echo ">>> Verify dns-in protocol:"
+grep -B5 'tag = "dns-in"' "$UTIL_XRAY" | grep -q 'protocol = "dokodemo-door"' \
+  || { echo ">>> [ERROR] dns-in protocol patch failed!"; exit 1; }
 grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 
 
