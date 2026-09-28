@@ -76,6 +76,16 @@ grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 ./scripts/feeds install -f -a -p passwall_packages
 echo ">>> Passwall feeds pinned."
 
+# 收尾：feeds 索引是 update 阶段生成的、删文件清不掉它，
+# install -f 可能把 packages 的旧版又装回来，这里强制清掉只留 passwall_packages 的
+rm -rf package/feeds/packages/v2ray-geodata
+rm -rf package/feeds/packages/xray-core
+[ -d "package/feeds/passwall_packages/v2ray-geodata" ] \
+  || { echo ">>> [ERROR] passwall_packages v2ray-geodata missing!"; exit 1; }
+[ -d "package/feeds/passwall_packages/xray-core" ] \
+  || { echo ">>> [ERROR] passwall_packages xray-core missing!"; exit 1; }
+echo ">>> v2ray-geodata/xray-core: only passwall_packages version remains."
+
 # ccache 目录放这里，不进.config（/workdir 是 runner 相关路径）
 sed -i '/CONFIG_CCACHE_DIR/d' .config
 echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
