@@ -61,7 +61,7 @@ jobs:
       run: |
         sudo rm -rf /etc/apt/sources.list.d/*
         sudo -E apt-get -qq update
-        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
@@ -85,9 +85,11 @@ jobs:
         remove-docker-images: 'true'
         build-mount-path: '/workdir'
 
-    # 新增: maximize 之后再深度清理一次根分区, 并留下 df 基线。
+    # 新增: maximize 之后再深度清理一次根分区, 并留下 du 基线。
     # 背景: 曾实测根分区 99% (146G 用了 144G) 而 /workdir 仅 18%,
     # actions/cache 在 Post 阶段把 tarball staging 到根分区导致 No space left on device。
+    # 144G 远超 tarball 体量, 说明根分区很可能从 maximize 之后就没干净过,
+    # 这步的 du 基线让下次一眼看出大户是谁。
     - name: Deep clean rootfs and baseline disk usage
       run: |
         echo ">>> 深度清理根分区残留..."
@@ -214,8 +216,11 @@ jobs:
         cd openwrt
         make defconfig
         make download -j8
-        # 列出并删除下载失败的残片 (小于 1024 字节的基本都是坏包)
-        find dl -size -1024c -print -delete
+        # 列出并删除下载失败的残片 (小于 1024 字节的基本都是坏包)。
+        # 注意: 必须加 -maxdepth 1 -type f, 只扫 dl/ 顶层的 tarball。
+        # Go module 缓存住在 dl/go-mod-cache/ 里, 里面大量文件 < 1024 字节
+        # (如 protobuf 的 editions_defaults.binpb 仅 154 字节), 不加限制会被误删导致编译失败。
+        find dl -maxdepth 1 -type f -size -1024c -print -delete
 
     - name: Clean gettext-full host cache
       run: |
