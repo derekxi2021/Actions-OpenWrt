@@ -93,10 +93,24 @@ jobs:
         sudo docker system prune -af 2>/dev/null || true
         sudo rm -rf /home/runner/.cache /root/.cache 2>/dev/null || true
         sudo -E apt-get -qq clean
+        # 僵尸 /swapfile (3.1G): maximize 的 swap 处理没生效, 每次都残留。
+        # 关掉它腾出 3.1G, 然后在 /workdir (100G 空) 上重建 2G swap 兜底。
+        sudo swapoff -a 2>/dev/null || true
+        sudo rm -f /swapfile
+        sudo fallocate -l 2G /workdir/swapfile
+        sudo chmod 600 /workdir/swapfile
+        sudo mkswap /workdir/swapfile
+        sudo swapon /workdir/swapfile
         echo ">>> df 基线:"
         df -hT
         echo ">>> / 下最大的 15 个目录 (基线, 供事后对比):"
         sudo du -sh /* 2>/dev/null | sort -rh | head -15
+        echo ">>> 可疑大户: /mnt 和 /opt (maximize 号称删掉的组件可能没删干净):"
+        sudo du -sh /mnt/* /opt/* 2>/dev/null | sort -rh | head -10
+        echo ">>> 根分区可用空间断言 (不足 2G 直接失败, 省得 2 小时后失联):"
+        ROOT_AVAIL_MB=$(df -m / | awk 'NR==2{print $4}')
+        echo "root avail: ${ROOT_AVAIL_MB}M"
+        [ "$ROOT_AVAIL_MB" -gt 2048 ] || { echo "ERROR: root almost full, abort early"; exit 1; }
 
     # 缓存按自然周分桶 (如 2026-W39), 配合下面的 restore/save 分离:
     # 同一周内命中则跳过 save, 避免每次跑都打包上传数 GB 的 tarball。
@@ -220,10 +234,12 @@ jobs:
 
         echo -e "$(nproc) thread compile"
         set -o pipefail
-        # 构建日志加秒级时间戳存文件, 供后续步骤分析 top20 耗时包 (awk fflush 防缓冲)
-        make -j$(nproc) 2>&1 | awk '{ print strftime("%Y-%m-%dT%H:%M:%S"), $0; fflush() }' | tee $GITHUB_WORKSPACE/build.log || \
-        make -j1 2>&1 | awk '{ print strftime("%Y-%m-%dT%H:%M:%S"), $0; fflush() }' | tee -a $GITHUB_WORKSPACE/build.log || \
-        make -j1 V=s 2>&1 | awk '{ print strftime("%Y-%m-%dT%H:%M:%S"), $0; fflush() }' | tee -a $GITHUB_WORKSPACE/build.log
+        # 构建日志加秒级时间戳存文件, 供后续步骤分析 top20 耗时包 (awk fflush 防缓冲)。
+        # 注意: 必须写 /workdir (100G 大分区), 不能写 $GITHUB_WORKSPACE —— 后者在根分区上,
+        # 根分区经 maximize 后只剩几百 M, 日志 2 小时会把它写满导致 runner 失联 (2026-09-28 实测)。
+        make -j$(nproc) 2>&1 | awk '{ print strftime("%Y-%m-%dT%H:%M:%S"), $0; fflush() }' | tee /workdir/build.log || \
+        make -j1 2>&1 | awk '{ print strftime("%Y-%m-%dT%H:%M:%S"), $0; fflush() }' | tee -a /workdir/build.log || \
+        make -j1 V=s 2>&1 | awk '{ print strftime("%Y-%m-%dT%H:%M:%S"), $0; fflush() }' | tee -a /workdir/build.log
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
@@ -252,7 +268,8 @@ jobs:
         from datetime import datetime
 
         ws = os.environ.get("GITHUB_WORKSPACE", ".")
-        log_path = os.path.join(ws, "build.log")
+        # 日志写在 /workdir (见 compile 步骤注释), 不在 GITHUB_WORKSPACE
+        log_path = "/workdir/build.log"
         enter_re = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}) make\[\d+\]: Entering directory '([^']+)'")
         leave_re = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}) make\[\d+\]: Leaving directory '([^']+)'")
 
