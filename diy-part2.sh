@@ -28,10 +28,6 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 rm -rf feeds/luci/applications/luci-app-passwall2 feeds/luci/applications/luci-app-passwall
 rm -rf package/feeds/luci/luci-app-passwall2 package/feeds/luci/luci-app-passwall
 
-# helloworld feed（kenzok8/small）同理
-#rm -rf feeds/helloworld/luci-app-passwall2 feeds/helloworld/luci-app-passwall
-#rm -rf package/feeds/helloworld/luci-app-passwall2 package/feeds/helloworld/luci-app-passwall
-
 # Pin passwall feeds（与 AN7581 对齐：passwall2 ab1e812 / passwall_packages c6d4772）
 # feeds 脚本不支持 commit pin，只能 update 后 checkout；升级时两边一起改
 echo ">>> Pinning passwall2 feed..."
@@ -54,7 +50,9 @@ rm -rf package/feeds/packages/xray-core
 # 如果 package/feeds 里还留着旧版，install -f -a -p passwall_packages 会认为是"已安装"
 # 而跳过，passwall_packages 版就永远装不上。
 echo ">>> Removing shadowing v2ray-geodata from all feeds except passwall_packages..."
-find feeds package/feeds -type d -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_packages" | while read -r d; do
+# 注意：package/feeds/ 下的是 symlink（feeds install 创建的），find 不能加 -type d，
+# 否则匹配不到 symlink，删不干净，断言也会误报 found 0。
+find feeds package/feeds -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_packages" | while read -r d; do
   echo ">>> Removing $d"
   rm -rf "$d"
 done
@@ -77,12 +75,13 @@ grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 echo ">>> Passwall feeds pinned."
 
 # 验证：v2ray-geodata 只剩 passwall_packages 的那一个
+# 注意：package/feeds/ 下的是 symlink，find 不能加 -type d
 [ -d "package/feeds/passwall_packages/v2ray-geodata" ] \
   || { echo ">>> [ERROR] passwall_packages v2ray-geodata missing!"; exit 1; }
-REMAINING_COUNT=$(find package/feeds -type d -name "v2ray-geodata" 2>/dev/null | wc -l)
+REMAINING_COUNT=$(find package/feeds -name "v2ray-geodata" 2>/dev/null | wc -l)
 if [ "$REMAINING_COUNT" -ne 1 ]; then
   echo ">>> [ERROR] Expected exactly 1 v2ray-geodata, found $REMAINING_COUNT:"
-  find package/feeds -type d -name "v2ray-geodata" 2>/dev/null
+  find package/feeds -name "v2ray-geodata" 2>/dev/null
   exit 1
 fi
 # xray-core 收尾
