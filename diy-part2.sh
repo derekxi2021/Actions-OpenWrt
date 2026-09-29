@@ -29,8 +29,8 @@ rm -rf feeds/luci/applications/luci-app-passwall2 feeds/luci/applications/luci-a
 rm -rf package/feeds/luci/luci-app-passwall2 package/feeds/luci/luci-app-passwall
 
 # helloworld feed（kenzok8/small）同理
-rm -rf feeds/helloworld/luci-app-passwall2 feeds/helloworld/luci-app-passwall
-rm -rf package/feeds/helloworld/luci-app-passwall2 package/feeds/helloworld/luci-app-passwall
+#rm -rf feeds/helloworld/luci-app-passwall2 feeds/helloworld/luci-app-passwall
+#rm -rf package/feeds/helloworld/luci-app-passwall2 package/feeds/helloworld/luci-app-passwall
 
 # Pin passwall feeds（与 AN7581 对齐：passwall2 ab1e812 / passwall_packages c6d4772）
 # feeds 脚本不支持 commit pin，只能 update 后 checkout；升级时两边一起改
@@ -40,10 +40,24 @@ git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595
 
 # === 2026-09-27: passwall2 DNS 黑洞修复（x64 26.9.16 实测）===
 # 1. 删 packages feed 的旧 xray-core（26.6.1），让 passwall_packages 的新版透出来（xray-core 26.9.9）
-#    （v2ray-geodata 的清理见下方 2026-09-29 段落，改成全 feed 通杀）
 echo ">>> Removing shadowed xray-core from packages feed..."
 rm -rf feeds/packages/net/xray-core
 rm -rf package/feeds/packages/xray-core
+
+# === 2026-09-29: v2ray-geodata 遮挡根治 ===
+# 不止 packages feed 有旧版——helloworld（kenzok8/small）等 feed 也有 v2ray-geodata
+# （helloworld 的是 2026-09-05 版），构建时多个副本只会用一个，不删干净就继续用旧的。
+# 这里把所有 feed 的 v2ray-geodata 全删掉，只留 passwall_packages 的新版（geo 2026-09-24）。
+# feeds/ 是源，package/feeds/ 是 install 后的副本，两处都要清。
+# 注意：必须在下面的 feeds install 之前删！yml 里 "Install feeds" 步骤已经跑过
+# ./scripts/feeds install -a，v2ray-geodata 此时是从 packages feed（排前面）装的；
+# 如果 package/feeds 里还留着旧版，install -f -a -p passwall_packages 会认为是"已安装"
+# 而跳过，passwall_packages 版就永远装不上。
+echo ">>> Removing shadowing v2ray-geodata from all feeds except passwall_packages..."
+find feeds package/feeds -type d -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_packages" | while read -r d; do
+  echo ">>> Removing $d"
+  rm -rf "$d"
+done
 
 
 # 2. dns-in: tunnel -> dokodemo-door（26.9.16 源码 bug，无 UCI 项，只能改源码）
@@ -62,18 +76,7 @@ grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 ./scripts/feeds install -f -a -p passwall_packages
 echo ">>> Passwall feeds pinned."
 
-# === 2026-09-29: v2ray-geodata 遮挡根治 ===
-# 不止 packages feed 有旧版——helloworld（kenzok8/small）等 feed 也有 v2ray-geodata
-# （helloworld 的是 2026-09-05 版），构建时多个副本只会用一个，不删干净就继续用旧的。
-# 这里把所有 feed 的 v2ray-geodata 全删掉，只留 passwall_packages 的新版（geo 2026-09-24）。
-# feeds/ 是源，package/feeds/ 是 install 后的副本，两处都要清。
-# 注意：feeds 索引是 update 阶段生成的、删文件清不掉它，所以这段必须放在 install -f 之后。
-echo ">>> Removing shadowing v2ray-geodata from all feeds except passwall_packages..."
-find feeds package/feeds -type d -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_packages" | while read -r d; do
-  echo ">>> Removing $d"
-  rm -rf "$d"
-done
-# 验证：只剩 passwall_packages 的那一个
+# 验证：v2ray-geodata 只剩 passwall_packages 的那一个
 [ -d "package/feeds/passwall_packages/v2ray-geodata" ] \
   || { echo ">>> [ERROR] passwall_packages v2ray-geodata missing!"; exit 1; }
 REMAINING_COUNT=$(find package/feeds -type d -name "v2ray-geodata" 2>/dev/null | wc -l)
