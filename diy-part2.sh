@@ -74,6 +74,23 @@ grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 ./scripts/feeds install -f -a -p passwall_packages
 echo ">>> Passwall feeds pinned."
 
+# POST-INSTALL 清理：feeds install 装依赖时会查陈旧索引（feeds update 在删目录之前跑的），
+# 把已删的 packages 版 v2ray-geodata 又装回来。这里在索引用完之后再清一次，它不会复活。
+echo ">>> Removing post-install v2ray-geodata stragglers..."
+find package/feeds -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_packages" | while read -r d; do
+  echo ">>> Removing straggler $d"
+  rm -rf "$d"
+done
+# 同理，xray-core 也可能被复活
+rm -rf package/feeds/packages/xray-core
+
+# 确保 passwall_packages 的在位（万一 install 跳过，手动建 symlink 兜底）
+if [ ! -e "package/feeds/passwall_packages/v2ray-geodata" ]; then
+  echo ">>> Manually linking v2ray-geodata from passwall_packages..."
+  mkdir -p package/feeds/passwall_packages
+  ln -s "../../../feeds/passwall_packages/v2ray-geodata" package/feeds/passwall_packages/v2ray-geodata
+fi
+
 # 验证：v2ray-geodata 只剩 passwall_packages 的那一个
 # 注意：package/feeds/ 下的是 symlink，find 不能加 -type d
 [ -d "package/feeds/passwall_packages/v2ray-geodata" ] \
@@ -85,7 +102,6 @@ if [ "$REMAINING_COUNT" -ne 1 ]; then
   exit 1
 fi
 # xray-core 收尾
-rm -rf package/feeds/packages/xray-core
 [ -d "package/feeds/passwall_packages/xray-core" ] \
   || { echo ">>> [ERROR] passwall_packages xray-core missing!"; exit 1; }
 echo ">>> v2ray-geodata/xray-core: only passwall_packages version remains."
