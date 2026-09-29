@@ -39,25 +39,11 @@ git -C feeds/passwall2 checkout -q ab1e812ec57ac7be0e213532f60ef4c46e76d962 || {
 git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595250 || { echo ">>> [ERROR] passwall_packages pin failed!"; exit 1;}
 
 # === 2026-09-27: passwall2 DNS 黑洞修复（x64 26.9.16 实测）===
-# 1. 删 packages feed 的旧 xray-core（26.6.1）和旧 v2ray-geodata（2025-06），
-# 让 passwall_packages 的新版透出来（xray-core 26.9.9 / geo 2026-09-24）
-echo ">>> Removing shadowed xray-core and v2ray-geodata from packages feed..."
-# xray-core 路径已知，直接删
+# 1. 删 packages feed 的旧 xray-core（26.6.1），让 passwall_packages 的新版透出来（xray-core 26.9.9）
+#    （v2ray-geodata 的清理见下方 2026-09-29 段落，改成全 feed 通杀）
+echo ">>> Removing shadowed xray-core from packages feed..."
 rm -rf feeds/packages/net/xray-core
 rm -rf package/feeds/packages/xray-core
-# v2ray-geodata 路径不确定，find 出来再删
-V2RAY_GEO_DIR=$(find feeds/packages -type d -name "v2ray-geodata" 2>/dev/null | head -1)
-if [ -n "$V2RAY_GEO_DIR" ]; then
-  echo ">>> Found v2ray-geodata at $V2RAY_GEO_DIR, removing..."
-  rm -rf "$V2RAY_GEO_DIR"
-else
-  echo ">>> [WARN] v2ray-geodata not found in packages feed!"
-fi
-rm -rf package/feeds/packages/v2ray-geodata
-# 验证删干净了
-find feeds/packages -type d -name "v2ray-geodata" 2>/dev/null | grep -q . \
-  && { echo ">>> [ERROR] v2ray-geodata still exists in packages feed!"; exit 1; } \
-  || echo ">>> v2ray-geodata removed from packages feed."
 
 
 # 2. dns-in: tunnel -> dokodemo-door（26.9.16 源码 bug，无 UCI 项，只能改源码）
@@ -76,12 +62,28 @@ grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
 ./scripts/feeds install -f -a -p passwall_packages
 echo ">>> Passwall feeds pinned."
 
-# 收尾：feeds 索引是 update 阶段生成的、删文件清不掉它，
-# install -f 可能把 packages 的旧版又装回来，这里强制清掉只留 passwall_packages 的
-rm -rf package/feeds/packages/v2ray-geodata
-rm -rf package/feeds/packages/xray-core
+# === 2026-09-29: v2ray-geodata 遮挡根治 ===
+# 不止 packages feed 有旧版——helloworld（kenzok8/small）等 feed 也有 v2ray-geodata
+# （helloworld 的是 2026-09-05 版），构建时多个副本只会用一个，不删干净就继续用旧的。
+# 这里把所有 feed 的 v2ray-geodata 全删掉，只留 passwall_packages 的新版（geo 2026-09-24）。
+# feeds/ 是源，package/feeds/ 是 install 后的副本，两处都要清。
+# 注意：feeds 索引是 update 阶段生成的、删文件清不掉它，所以这段必须放在 install -f 之后。
+echo ">>> Removing shadowing v2ray-geodata from all feeds except passwall_packages..."
+find feeds package/feeds -type d -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_packages" | while read -r d; do
+  echo ">>> Removing $d"
+  rm -rf "$d"
+done
+# 验证：只剩 passwall_packages 的那一个
 [ -d "package/feeds/passwall_packages/v2ray-geodata" ] \
   || { echo ">>> [ERROR] passwall_packages v2ray-geodata missing!"; exit 1; }
+REMAINING_COUNT=$(find package/feeds -type d -name "v2ray-geodata" 2>/dev/null | wc -l)
+if [ "$REMAINING_COUNT" -ne 1 ]; then
+  echo ">>> [ERROR] Expected exactly 1 v2ray-geodata, found $REMAINING_COUNT:"
+  find package/feeds -type d -name "v2ray-geodata" 2>/dev/null
+  exit 1
+fi
+# xray-core 收尾
+rm -rf package/feeds/packages/xray-core
 [ -d "package/feeds/passwall_packages/xray-core" ] \
   || { echo ">>> [ERROR] passwall_packages xray-core missing!"; exit 1; }
 echo ">>> v2ray-geodata/xray-core: only passwall_packages version remains."
