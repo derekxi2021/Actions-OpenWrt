@@ -57,7 +57,6 @@ find feeds package/feeds -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_p
   rm -rf "$d"
 done
 
-
 # 2. dns-in: tunnel -> dokodemo-door（26.9.16 源码 bug，无 UCI 项，只能改源码）
 UTIL_XRAY=$(find feeds/passwall2 -name "util_xray.lua" 2>/dev/null | head -1)
 [ -z "$UTIL_XRAY" ] && { echo ">>> [ERROR] util_xray.lua not found!"; exit 1;}
@@ -68,7 +67,6 @@ echo ">>> Verify dns-in protocol:"
 grep -B5 'tag = "dns-in"' "$UTIL_XRAY" | grep -q 'protocol = "dokodemo-door"' \
 || { echo ">>> [ERROR] dns-in protocol patch failed!"; exit 1;}
 grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
-
 
 ./scripts/feeds install -f -a -p passwall2
 ./scripts/feeds install -f -a -p passwall_packages
@@ -143,7 +141,6 @@ else
   fi
 fi
 
-
 # set golang 1.26.x （rc/beta）
 #rm -rf feeds/packages/lang/golang
 #git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
@@ -180,7 +177,6 @@ fi
 # =========================================================
 # 彻底根除 v2ray/xray-plugin 编译错误的组合拳（diy-part2 专用版）
 # =========================================================
-
 
 #!/bin/bash
 
