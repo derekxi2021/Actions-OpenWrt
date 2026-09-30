@@ -110,9 +110,39 @@ echo ">>> v2ray-geodata/xray-core: only passwall_packages version remains."
 sed -i '/CONFIG_CCACHE_DIR/d' .config
 echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
 
-# 删掉 LEDE 首次启动动 /etc/shadow 的行为（目前是设 root 密码为 password）
-# 按目标文件匹配，上游换 hash 也不会漏网
-sed -i '\|/etc/shadow|d' package/lean/default-settings/files/zzz-default-settings
+# === 2026-09-30: 移除 LEDE 首次启动强制设 root 密码 ===
+# 背景：coolsnowwolf/lede 的 zzz-default-settings 会在首次启动时把空密码的 root
+# 设成 "password"。sysupgrade 保留配置时，若 /etc/shadow 恢复失败（空），密码会
+# 被悄悄改成 password（2026-09-29 实测）。删掉这行逻辑后：
+#   - 全新刷机 → 空密码（标准 OpenWrt 行为）
+#   - sysupgrade 保留配置 → 旧密码保留，不会被覆盖
+# 健壮性设计（防上游变更）：
+#   - 按目标文件 /etc/shadow 匹配，不按具体 hash/salt，上游换 hash 照样命中
+#   - 先检查文件存在、再计数、删完验证，三段式不静默失败
+#   - 上游若自行删掉该逻辑 → 计数为 0，日志明示，不报错不中断构建
+DEFAULT_SETTINGS="package/lean/default-settings/files/zzz-default-settings"
+echo ">>> Checking LEDE default password logic..."
+if [ ! -f "$DEFAULT_SETTINGS" ]; then
+  echo ">>> [WARN] $DEFAULT_SETTINGS not found, skipping password fix (upstream may have restructured)"
+else
+  SHADOW_LINES_BEFORE=$(grep -c "/etc/shadow" "$DEFAULT_SETTINGS" 2>/dev/null || true)
+  SHADOW_LINES_BEFORE=${SHADOW_LINES_BEFORE:-0}
+  if [ "$SHADOW_LINES_BEFORE" -eq 0 ]; then
+    echo ">>> No /etc/shadow logic in zzz-default-settings (upstream already removed?), nothing to do"
+  else
+    echo ">>> Found $SHADOW_LINES_BEFORE line(s) touching /etc/shadow, removing..."
+    grep "/etc/shadow" "$DEFAULT_SETTINGS" | sed 's/^/>>>   was: /'
+    sed -i '\|/etc/shadow|d' "$DEFAULT_SETTINGS"
+    SHADOW_LINES_AFTER=$(grep -c "/etc/shadow" "$DEFAULT_SETTINGS" 2>/dev/null || true)
+    SHADOW_LINES_AFTER=${SHADOW_LINES_AFTER:-0}
+    if [ "$SHADOW_LINES_AFTER" -ne 0 ]; then
+      echo ">>> [ERROR] Failed to remove all /etc/shadow lines from zzz-default-settings!"
+      exit 1
+    fi
+    echo ">>> LEDE default password logic removed ($SHADOW_LINES_BEFORE line(s))"
+  fi
+fi
+
 
 # set golang 1.26.x （rc/beta）
 #rm -rf feeds/packages/lang/golang
