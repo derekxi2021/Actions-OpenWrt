@@ -28,11 +28,9 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 rm -rf feeds/luci/applications/luci-app-passwall2 feeds/luci/applications/luci-app-passwall
 rm -rf package/feeds/luci/luci-app-passwall2 package/feeds/luci/luci-app-passwall
 
-# Pin passwall feeds（与 AN7581 对齐：passwall2 ab1e812 / passwall_packages c6d4772）
-# feeds 脚本不支持 commit pin，只能 update 后 checkout；升级时两边一起改
-echo ">>> Pinning passwall2 feed..."
-git -C feeds/passwall2 checkout -q ab1e812ec57ac7be0e213532f60ef4c46e76d962 || { echo ">>> [ERROR] passwall2 pin failed!"; exit 1;}
-git -C feeds/passwall_packages checkout -q c6d4772cea9bec6adc66261be2c3e6679a595250 || { echo ">>> [ERROR] passwall_packages pin failed!"; exit 1;}
+# 2026-09-30: 去掉 passwall feed pin，直接用上游最新版
+# （pin 维护成本高，上游经常 force-push 导致 build 挂）
+echo ">>> Using latest passwall feeds (no pin)..."
 
 # === 2026-09-27: passwall2 DNS 黑洞修复（x64 26.9.16 实测）===
 # 1. 删 packages feed 的旧 xray-core（26.6.1），让 passwall_packages 的新版透出来（xray-core 26.9.9）
