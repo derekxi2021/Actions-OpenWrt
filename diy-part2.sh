@@ -57,6 +57,7 @@ find feeds package/feeds -name "v2ray-geodata" 2>/dev/null | grep -v "passwall_p
   rm -rf "$d"
 done
 
+
 # 2. dns-in: tunnel -> dokodemo-door（26.9.16 源码 bug，无 UCI 项，只能改源码）
 UTIL_XRAY=$(find feeds/passwall2 -name "util_xray.lua" 2>/dev/null | head -1)
 [ -z "$UTIL_XRAY" ] && { echo ">>> [ERROR] util_xray.lua not found!"; exit 1;}
@@ -67,6 +68,7 @@ echo ">>> Verify dns-in protocol:"
 grep -B5 'tag = "dns-in"' "$UTIL_XRAY" | grep -q 'protocol = "dokodemo-door"' \
 || { echo ">>> [ERROR] dns-in protocol patch failed!"; exit 1;}
 grep -B3 'tag = "dns-in"' "$UTIL_XRAY" | grep protocol
+
 
 ./scripts/feeds install -f -a -p passwall2
 ./scripts/feeds install -f -a -p passwall_packages
@@ -141,7 +143,34 @@ else
   fi
 fi
 
-# set golang 1.26.x （rc/beta）
+# === 2026-09-30: 调试 sysupgrade shadow 恢复失败 ===
+# 现象：备份包里有 shadow（hash 正确），但 preinit 恢复后密码为空，其他配置正常。
+# 在 80_mount_root 的 tar 解压后加日志，把证据写到 /boot（重启后还在）。
+MOUNT_ROOT="package/base-files/files/lib/preinit/80_mount_root"
+if [ -f "$MOUNT_ROOT" ]; then
+  echo ">>> Adding restore debug logging to 80_mount_root..."
+  cp "$MOUNT_ROOT" "${MOUNT_ROOT}.bak"
+  python3 - "$MOUNT_ROOT" << 'PYEOF'
+import sys
+path = sys.argv[1]
+with open(path) as f:
+    content = f.read()
+old = "\t\t[ -f /sysupgrade.tgz ] && tar xzf /sysupgrade.tgz"
+new = ("\t\t[ -f /sysupgrade.tgz ] && {\n"
+       "\t\t\ttar xzf /sysupgrade.tgz\n"
+       "\t\t\techo \"restore-debug: tgz tar exit=$? shadow_head=$(head -1 /etc/shadow | cut -c1-20)\" >> /boot/restore_debug.log\n"
+       "\t\t}")
+if old not in content:
+    print(">>> [WARN] pattern not found in 80_mount_root, skipping debug patch")
+    sys.exit(0)
+content = content.replace(old, new)
+with open(path, "w") as f:
+    f.write(content)
+print(">>> restore debug logging added")
+PYEOF
+else
+  echo ">>> [WARN] $MOUNT_ROOT not found, skipping debug patch"
+fi
 #rm -rf feeds/packages/lang/golang
 #git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
 
@@ -177,6 +206,7 @@ fi
 # =========================================================
 # 彻底根除 v2ray/xray-plugin 编译错误的组合拳（diy-part2 专用版）
 # =========================================================
+
 
 #!/bin/bash
 
