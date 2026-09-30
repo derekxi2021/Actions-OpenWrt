@@ -110,6 +110,10 @@ echo ">>> v2ray-geodata/xray-core: only passwall_packages version remains."
 sed -i '/CONFIG_CCACHE_DIR/d' .config
 echo 'CONFIG_CCACHE_DIR="/workdir/.ccache"' >> .config
 
+# 删掉 LEDE 首次启动动 /etc/shadow 的行为（目前是设 root 密码为 password）
+# 按目标文件匹配，上游换 hash 也不会漏网
+sed -i '\|/etc/shadow|d' package/lean/default-settings/files/zzz-default-settings
+
 # set golang 1.26.x （rc/beta）
 #rm -rf feeds/packages/lang/golang
 #git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
