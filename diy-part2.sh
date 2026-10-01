@@ -141,33 +141,36 @@ else
   fi
 fi
 
-# === 2026-09-30: 调试 sysupgrade shadow 恢复失败 ===
+# === 2026-10-01: 调试 sysupgrade shadow 恢复失败（v2）===
 # 现象：备份包里有 shadow（hash 正确），但 preinit 恢复后密码为空，其他配置正常。
-# 在 80_mount_root 的 tar 解压后加日志，把证据写到 /boot（重启后还在）。
-MOUNT_ROOT="package/base-files/files/lib/preinit/80_mount_root"
-if [ -f "$MOUNT_ROOT" ]; then
-  echo ">>> Adding restore debug logging to 80_mount_root..."
-  cp "$MOUNT_ROOT" "${MOUNT_ROOT}.bak"
-  python3 - "$MOUNT_ROOT" << 'PYEOF'
-import sys
-path = sys.argv[1]
-with open(path) as f:
-    content = f.read()
-old = "\t\t[ -f /sysupgrade.tgz ] && tar xzf /sysupgrade.tgz"
-new = ("\t\t[ -f /sysupgrade.tgz ] && {\n"
-       "\t\t\ttar xzf /sysupgrade.tgz\n"
-       "\t\t\techo \"restore-debug: tgz tar exit=$? shadow_head=$(head -1 /etc/shadow | cut -c1-20)\" >> /boot/restore_debug.log\n"
-       "\t\t}")
-if old not in content:
-    print(">>> [WARN] pattern not found in 80_mount_root, skipping debug patch")
-    sys.exit(0)
-content = content.replace(old, new)
-with open(path, "w") as f:
-    f.write(content)
-print(">>> restore debug logging added")
-PYEOF
+# 加个 81_debug_shadow preinit 脚本，在 80_mount_root 之后运行，记录 /etc/shadow 状态。
+# 日志写到 /boot（79_move_config 已挂载，重启后还在）。
+DEBUG_SCRIPT="package/base-files/files/lib/preinit/81_debug_shadow"
+echo ">>> Creating 81_debug_shadow preinit debug script..."
+mkdir -p "$(dirname "$DEBUG_SCRIPT")"
+cat > "$DEBUG_SCRIPT" << 'SHEOF'
+#!/bin/sh
+# Log shadow state after 80_mount_root config restore
+# Runs at preinit 81, after 80_mount_root (tar extract) and 79_move_config (/boot mounted)
+{
+  echo "81_debug: timestamp=$(date 2>/dev/null || echo unknown)"
+  echo "81_debug: after restore, shadow_head=$(head -1 /etc/shadow 2>/dev/null | cut -c1-40)"
+  echo "81_debug: sysupgrade.tgz exists=$([ -f /sysupgrade.tgz ] && echo yes || echo no)"
+  echo "81_debug: shadow in tgz=$([ -f /sysupgrade.tgz ] && tar tzf /sysupgrade.tgz 2>/dev/null | grep -c 'etc/shadow' || echo 0)"
+  echo "81_debug: boot_writable=$([ -w /boot ] && echo yes || echo no)"
+} >> /boot/restore_debug.log 2>&1
+# Fallback: if /boot not writable, also try /tmp (won't survive reboot, but helps diagnose)
+if [ ! -w /boot ]; then
+  echo "81_debug: WARN /boot not writable!" >> /tmp/restore_debug_fallback.log 2>&1
+fi
+SHEOF
+chmod +x "$DEBUG_SCRIPT"
+# 验证文件确实创建了
+if [ -f "$DEBUG_SCRIPT" ] && [ -x "$DEBUG_SCRIPT" ]; then
+  echo ">>> 81_debug_shadow created and executable: $DEBUG_SCRIPT"
 else
-  echo ">>> [WARN] $MOUNT_ROOT not found, skipping debug patch"
+  echo ">>> [ERROR] Failed to create 81_debug_shadow!"
+  exit 1
 fi
 #rm -rf feeds/packages/lang/golang
 #git clone https://github.com/kenzok8/golang -b 1.26 feeds/packages/lang/golang
